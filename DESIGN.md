@@ -66,8 +66,8 @@ logError()
 5. Create an array of gold `structs` using the seed or other forms of randomization
 6. Open a *port* to allow users to connect
 7. For each *player* that connects,
-      * Create a *player* `struct` for them, place them in an unoccupied space on the __map__, and try to store their data in the *player* __hashtable__
-      * Broadcast the new display with the new *players* to all users
+     * Create a *player* `struct` for them, place them in an unoccupied space on the __map__, and try to store their data in the *player* __hashtable__
+     * Broadcast the new display with the new *players* to all users
 8. For each *spectator* that connects,
       * If there is an existing *spectator*, send them a message to quit
       * Send the display to the latest *spectator*
@@ -83,22 +83,22 @@ logError()
 ### Major data structures:
 * __Hashtable__ of (key = player name) (item = *Player* data `struct`)
 * *Player* data `struct`
-      * *Position* `struct`
-      * Gold collected
-      * Name
-      * isActive
-      * Visibility binary string (0 for invisible; 1 for visible)
+     * *Position* `struct`
+     * Gold collected
+     * Name
+     * isActive
+     * Visibility binary string (0 for invisible; 1 for visible)
 * *Map* module
-      * Map text stored as one-line string
-      * Gold uncollected
-      * Gold struct
+     * Map text stored as one-line string
+     * Gold uncollected
+     * Gold struct
 * Gold data struct
-      * Value
-      * isCollected
-      * *Position* `struct`
+     * Value
+     * isCollected
+     * *Position* `struct`
 * Position data struct
-      * X
-      * Y
+     * X
+     * Y
 
 
 ### Testing Plan:
@@ -107,23 +107,23 @@ __Unit Testing__ - test each module individually
 * Do map load and place gold
 * Successful parse of a message from the user
 * Update player positions 
-      * Test over multiple clients
-      * Player get gold
+     * Test over multiple clients
+     * Player get gold
 * Threaded test
 * Add and delete player test
 
 Integration Testing - assemble server and test complete functionality as well as client interactions
 * Test basic functionality:
-      * Adding a player
-      * Adding a spectator
-      * Player can move around the map, collect gold, stopped at barriers
-      * Visibility updated properly
+     * Adding a player
+     * Adding a spectator
+     * Player can move around the map, collect gold, stopped at barriers
+     * Visibility updated properly
 * Test player interactions - collision of two players
 * Test adding a spectator while a spectator already exists
 * Testing boundary cases: 
-      * long player names (50 characters)
-      * adding player when game is full (26 players)
-      * players making keystroke requests at the same time (server collisions)
+     * long player names (50 characters)
+     * adding player when game is full (26 players)
+     * players making keystroke requests at the same time (server collisions)
 
 System Testing - needs client to be complete
 

@@ -31,14 +31,13 @@ We anticipate the use of the following modules/functions:
 2. `server` stores the *map* obtained from `mapReader` and initializes the *player data* __hashtable__. The *map*, player, and gold data are passed to the `messageHandler`
 3. `mapReader` constructs the *map* `string` and passes it to the __server__, updating NR, NC
 4. `messageHandler` receives messages from the *clients* (ex. __Players__ joining, moving, leaving), updates the gold and player data passed from the __server__, and passes the updated information to the `mapBroadcaster`
-5. `mapBroadcaster` constructs and sends appropriate updated *maps* to each *client*
+5. `mapBroadcaster` constructs and sends appropriate updated *maps* to each *client* using information from `messageHandler` 
 
 ### Functions:
 __init__
 ```c
 startServer()
 loadMap()
-isMapValid()
 placeGold()
 ```
 __Gameplay__
@@ -88,15 +87,11 @@ logError()
      * Name
      * isActive
      * Visibility binary string (0 for invisible; 1 for visible)
-* *Map* module
-     * Map text stored as one-line string
-     * Gold uncollected
-     * Gold struct
-* Gold data struct
+* Gold data `struct`
      * Value
      * isCollected
      * *Position* `struct`
-* Position data struct
+* Position data `struct`
      * X
      * Y
 
@@ -112,7 +107,7 @@ __Unit Testing__ - test each module individually
 * Threaded test
 * Add and delete player test
 
-Integration Testing - assemble server and test complete functionality as well as client interactions
+__Integration Testing__ - assemble server and test complete functionality as well as client interactions
 * Test basic functionality:
      * Adding a player
      * Adding a spectator

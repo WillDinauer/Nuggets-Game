@@ -21,7 +21,7 @@ The server prints status updates throughout the game to indicate what it is doin
 ### Modules: 
 We anticipate the use of the following modules/functions:
 * `main` which parses arguments and initializes other modules
-* `server` which manages the stored player data, *map*, and gold information (including NR, NC) via threads
+* `server` which manages the stored player data, *map*, and gold information (including NR, NC)
 * `mapReader` which reads the map file to construct the one-line *map* `string`
 * `messageHandler` which waits for messages from clients and calls the appropriate function relevant to their action
 * `mapBroadcaster` which sends an updated version of the map to all clients
@@ -62,21 +62,23 @@ logError()
 2. Parse command line, validate arguments, initialize [*modules*](#modules)
 3. Read from the map file to infer and store the number of columns and rows, NR x NC
 4. Write the map file to a one-line string
-5. Create an array of gold `structs` using the seed or other forms of randomization
+5. Create an array of gold `structs` using the seed or a default form of randomization
 6. Open a *port* to allow users to connect
 7. For each *player* that connects,
+     * Validate the player (acceptable name length, not max players already connected)
      * Create a *player* `struct` for them, place them in an unoccupied space on the __map__, and try to store their data in the *player* __hashtable__
-     * Broadcast the new display with the new *players* to all users
+     * Send the display with the new *player* to all users
 8. For each *spectator* that connects,
       * If there is an existing *spectator*, send them a message to quit
       * Send the display to the latest *spectator*
 9. Whenever a *player* makes a move,
       * Validate the action (ex. Not bumping into a wall)
       * Handle the action accordingly and update *player*/gold data
-      * Broadcast the new display to all connected users
+      * Send the new display to all connected users
 10. Whenever a *player* disconnects,
       * Remove them from the *map* (but keep them in the __hashtable__ to prevent rejoining)
-      * Broadcast the new display to all connected users
+      * If there are no players left, end the game and close the server
+      * Send the new display to all connected users
 11. Once all gold has been collected, broadcast the end of the game to the clients. Send a report of the final scores to each player
 
 ### Major data structures:

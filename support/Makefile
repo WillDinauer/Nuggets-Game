@@ -17,7 +17,7 @@ MAKE = make
 ############# default rule ###########
 all: $(LIB) $(TESTS) 
 
-$(LIB): message.o log.o
+$(LIB): message.o log.o hashtable.o set.o counters.o jhash.o memory.o
 	ar cr $(LIB) $^
 
 messagetest: message.c message.h log.o
@@ -25,6 +25,11 @@ messagetest: message.c message.h log.o
 
 message.o: message.h
 log.o: log.h
+memory.o: memory.h
+jhash.o: jhash.h
+counters.o: counters.h
+set.o: set.h
+hashtable.o: hashtable.h
 
 ############# clean ###########
 clean:

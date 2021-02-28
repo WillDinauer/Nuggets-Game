@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <ctype.h>
-#include "string.h"
+#include <string.h>
 #include "message.h"
 #include "log.h"
 #include "hashtable.h"

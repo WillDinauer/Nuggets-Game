@@ -1,7 +1,7 @@
 # Makefile for 'server' module
 # Dartmouth CS50 Winter 2021
 
-L = support
+L = ../support
 
 PROG = server
 LIBS = -lm

@@ -1,13 +1,15 @@
 # Makefile for 'map' module
 # Angus Emmett - Modified from class notes
 
-CFLAGS = -Wall -pedantic -std=c11 -ggdb -I../lib -I../set
+S = ../support
+
+CFLAGS = -Wall -pedantic -std=c11 -ggdb -I$S
 CC = gcc
 PROG = mapTest
-OBJS = mapTest.o
+OBJS = mapTest.o map.o
 LIBS =
 
-.PHONY: all clean
+.PHONY: all clean test
 
 all: mapTest
 
@@ -17,7 +19,11 @@ $(PROG): $(OBJS)
 
 # object files depend on include files
 mapTest.o: map.h
-map.o: map.h 
+map.o: map.h
+
+
+test: $(PROG)
+	./$(PROG)
 
 
 clean:

@@ -15,10 +15,7 @@ int main(const int argc, const char *argv[])
 
 	player_t *p = makePlayer();
 
-
 	map_t *plyrMap = map_buildPlayerMap(map,p,NULL);
-
-	
 
 	printf("map width: %d, height: %d\n\n", map->width, map->height);
 

@@ -35,11 +35,24 @@ typedef struct map {
 	int width, height;
 } map_t;
 
+
 /**************** map_new ****************/
+/*
+*	Initializes a new map from an open file to a map file
+*	Assumes the file is a valid map
+*
+*	Mallocs new space for map struct and the map string, freed later on by map_delete
+*/
 map_t *map_new(FILE *fp);
 
 
 /**************** map_buildPlayerMap ****************/
+/*
+*	Initializes a new map from an open file to a map file
+*	Assumes the file is a valid map
+*
+*	Mallocs new space for map struct and the map string, freed later on by map_delete
+*/
 map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr);
 
 

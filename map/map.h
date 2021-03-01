@@ -7,6 +7,10 @@
 #ifndef __MAP_H
 #define __MAP_H
 
+#include "hashtable.h"
+
+/******************************** DATA STRUCTS ********************************/
+
 /**************** position ****************/
 typedef struct position {
 	int x, y;
@@ -16,7 +20,7 @@ typedef struct position {
 /**************** player ****************/
 typedef struct player {
 	int goldCollected;
-	char *name;
+	char name;
 	bool isActive;
 	position_t *pos;
 
@@ -30,10 +34,15 @@ typedef struct gold {
 	position_t *pos;
 } gold_t;
 
+
+/**************** map ****************/
 typedef struct map {
 	char *mapStr;
 	int width, height;
 } map_t;
+
+
+/******************************** FUNCTIONS ********************************/
 
 
 /**************** map_new ****************/
@@ -42,26 +51,38 @@ typedef struct map {
 *	Assumes the file is a valid map
 *
 *	Mallocs new space for map struct and the map string, freed later on by map_delete
+*	Returns NULL if fp is NULL of malloc error
 */
 map_t *map_new(FILE *fp);
 
 
 /**************** map_buildPlayerMap ****************/
 /*
-*	Initializes a new map from an open file to a map file
-*	Assumes the file is a valid map
-*
-*	Mallocs new space for map struct and the map string, freed later on by map_delete
+*	Takes in original map and produces a copy of a map for a the provided player 
+*	Mallocs new space for newMap struct and the newMap string
+* 
+*	Returns NULL if map or player is NULL
 */
-map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr);
+map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
 
 
 /**************** map_calcPosition ****************/
+/*
+*	calculates the index in the string from position coordinates
+* 
+*	Returns NULL if map or pos is NULL
+*/
 int map_calcPosition(map_t *map, position_t *pos);
 
 
 /**************** buildMap ****************/
-map_t *map_buildOutput(map_t *map);
+/*
+*	Add back the new line characters for the client
+* 	Mallocs a new string for this output and must be deleted after use
+* 
+*	Returns NULL if map is NULL
+*/
+char *map_buildOutput(map_t *map);
 
 
 /**************** map_placeGold ****************/
@@ -69,6 +90,10 @@ map_t *map_placeGold(map_t *map, gold_t **goldArr);
 
 
 /**************** map_delete ****************/
+/*
+*	Frees the map struct and the string inside it
+* 
+*/
 void map_delete(map_t *map);
 
 #endif // __MAPmake_H

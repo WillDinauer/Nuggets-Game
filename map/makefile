@@ -8,6 +8,7 @@ CC = gcc
 PROG = mapTest
 OBJS = mapTest.o map.o
 LIBS =
+LLIBS = $S/support.a
 
 .PHONY: all clean test
 
@@ -15,11 +16,11 @@ all: mapTest
 
 # executable depends on object files
 $(PROG): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o $(PROG)
+	$(CC) $(CFLAGS) $(OBJS) $(LLIBS) $(LIBS) -o $(PROG)
 
 # object files depend on include files
-mapTest.o: map.h
-map.o: map.h
+mapTest.o: map.h $S/hashtable.h
+map.o: map.h $S/hashtable.h
 
 
 test: $(PROG)

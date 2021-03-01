@@ -10,9 +10,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include "map.h"
+#include "hashtable.h"
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
+char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
+/**************** Iterator Functions ****************/
+void addPlayerITR(void *arg, const char *key, void *item);
 
 
 /**************** map_new ****************/
@@ -73,7 +77,7 @@ map_t *map_new(FILE *fp)
 
 
 /**************** map_buildPlayerMap ****************/
-map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr)
+map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
 {
 	map_t *outMap = map_copy(map);
 
@@ -81,9 +85,9 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr)
 	int plyIndx = map_calcPosition(outMap, player->pos);
 	outMap->mapStr[plyIndx] = '@';
 
+	// Adding all the gold to the map
 	gold_t *g;
 	int i = 0;
-
 	if (goldArr != NULL){
 		while ((g = goldArr[i]) != NULL){
 			if (g->isCollected == false){
@@ -94,9 +98,23 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr)
 		} 
 	}
 
+	if (players != NULL){
+		// Adding the other players to the map
+		hashtable_iterate(players, outMap, addPlayerITR);
+	}
+
 
 	return outMap;
 }
+
+void addPlayerITR(void *arg, const char *key, void *item)
+{
+	map_t *map = arg;
+	player_t *player = item;
+
+	int plyIndx = map_calcPosition(map, player->pos);
+	map->mapStr[plyIndx] = player->name;
+}	
 
 
 /**************** map_calcPosition ****************/
@@ -110,22 +128,35 @@ int map_calcPosition(map_t *map, position_t *pos)
 }
 
 
-// /**************** buildMap ****************/
-// map_t *map_buildOutput(map_t *map)
-// {
+/**************** buildMap ****************/
+char *map_buildOutput(map_t *map)
+{
+
+	if (map == NULL){
+		return NULL;
+	}
+
+	int newLen = strlen(map->mapStr) + map->height;
+
+	char *newMapStr = (char*) malloc( (newLen * sizeof(char)) + 5 ); 
+	strcpy(newMapStr, map->mapStr);
+
+	// Adding in new line characters 
+	int offset = map->height;
+	for(int i = strlen(map->mapStr); i >= 0; i--){
+
+		newMapStr[i + offset] = newMapStr[i];
+		if (i % map->width == 0 && i != 0){
+			newMapStr[i + offset - 1] = '\n';
+			offset -= 1;
+		}
+	}
+
+	return newMapStr;
+}
 
 
-// }
-
-
-// /**************** map_placeGold ****************/
-// map_t *map_placeGold(map_t *map, gold_t **goldArr)
-// {
-
-// }
-
-
-
+/**************** map_copy ****************/
 map_t *map_copy(map_t *map)
 {
 	map_t *newMap = malloc(sizeof(map_t));
@@ -140,7 +171,18 @@ map_t *map_copy(map_t *map)
 	return newMap;
 }
 
+
+/**************** map_calculateVisibility ****************/
+char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
+{
+	return "Place Holder";
+}
+
+
+
+/**************** map_delete ****************/
 void map_delete(map_t *map)
 {
-
+	free(map->mapStr);
+	free(map);
 }

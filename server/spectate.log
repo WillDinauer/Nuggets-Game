@@ -1,9 +1,13 @@
 START OF LOG
-player on port 59237
+player on port 33336
 spectate
-GRID message received: GRID 5 14
+GRID message received: GRID 21 79
 displayStart: Success
-wRows = 24
+wRows = 25
 wCols = 105
-GOLD message received: GOLD 0 0 200
+GOLD message received: GOLD 0 0 250
 DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+QUIT message received: QUIT You have been replaced by a new spectator.
+END OF LOG

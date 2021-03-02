@@ -15,10 +15,11 @@
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
-char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
+char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
-
+void placeGold(void *arg, const char *key, void *item);
+position_t *map_intToPos(map_t *map, int i);
 
 /**************** map_new ****************/
 map_t *map_new(FILE *fp)
@@ -78,21 +79,13 @@ map_t *map_new(FILE *fp)
 
 
 /**************** map_buildPlayerMap ****************/
-map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
+map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
 {
 	map_t *outMap = map_copy(map);
 
 	// Adding all the gold to the map
-	gold_t *g;
-	int i = 0;
-	if (goldArr != NULL){
-		while ((g = goldArr[i]) != NULL){
-			if (g->isCollected == false){
-				int gIndx = map_calcPosition(outMap, g->pos);
-				outMap->mapStr[gIndx] = '*';
-			}
-			i++;
-		} 
+	if (goldData != NULL){
+        hashtable_iterate(goldData, outMap, placeGold);
 	}
 
 	if (players != NULL){
@@ -108,6 +101,16 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashta
     outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
+}
+
+void placeGold(void *arg, const char *key, void *item)
+{
+    map_t *outMap = arg;
+    gold_t *g = item;
+    if (!g->isCollected) {
+        int gIndx = map_calcPosition(outMap, g->pos);
+		outMap->mapStr[gIndx] = '*';
+    }
 }
 
 void addPlayerITR(void *arg, const char *key, void *item)
@@ -131,6 +134,20 @@ int map_calcPosition(map_t *map, position_t *pos)
 	return (pos->y * map->width) + (pos->x + 1);
 }
 
+/**************** map_intToPos ****************/
+position_t *map_intToPos(map_t *map, int i)
+{
+    position_t *pos = malloc(sizeof(position_t));
+
+    i--;
+
+    int width = map->width;
+
+    pos->x = i%width;
+    pos->y = i/width;
+
+    return pos;
+}
 
 /**************** buildMap ****************/
 char *map_buildOutput(map_t *map)
@@ -177,7 +194,7 @@ map_t *map_copy(map_t *map)
 
 
 /**************** map_calculateVisibility ****************/
-char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
+char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
 {
 	return "Place Holder";
 }

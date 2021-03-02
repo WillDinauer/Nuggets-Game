@@ -62,7 +62,7 @@ map_t *map_new(FILE *fp);
 * 
 *	Returns NULL if map or player is NULL
 */
-map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
+map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
 
 
 /**************** map_calcPosition ****************/
@@ -85,8 +85,10 @@ char *map_buildOutput(map_t *map);
 
 
 /**************** map_placeGold ****************/
-map_t *map_placeGold(map_t *map, gold_t **goldArr);
+map_t *map_placeGold(map_t *map, hashtable_t *goldData);
 
+/**************** map_intToPos ****************/
+position_t *map_intToPos(map_t *map, int i);
 
 /**************** map_delete ****************/
 /*

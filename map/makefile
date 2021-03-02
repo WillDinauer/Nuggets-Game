@@ -10,7 +10,7 @@ OBJS = mapTest.o map.o
 LIBS =
 LLIBS = $S/support.a
 
-.PHONY: all clean test
+.PHONY: all clean t
 
 all: mapTest
 
@@ -23,7 +23,8 @@ mapTest.o: map.h $S/hashtable.h
 map.o: map.h $S/hashtable.h $S/message.h
 
 
-test: $(PROG)
+t: $(PROG)
+	clear
 	./$(PROG)
 
 

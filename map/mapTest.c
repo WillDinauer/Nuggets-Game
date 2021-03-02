@@ -16,12 +16,21 @@ int main(const int argc, const char *argv[])
 
 	player_t *p = makePlayer();
 
-	map_t *plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
-
 	printf("map width: %d, height: %d\n\n", map->width, map->height);
 
-	printf("%s\n", map_buildOutput(plyrMap));
+	map_t *plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
+	printf("%s\n", plyrMap->mapStr);
 
+	printf("#######################################################\n");
+
+	position_t *pos = malloc(sizeof(position_t));
+	pos->x = 6;
+	pos->y = 0;
+
+	map_movePlayer(map, p, pos);
+
+	plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
+	printf("%s\n", plyrMap->mapStr);
 
 }
 
@@ -30,8 +39,8 @@ player_t *makePlayer()
 {
 
 	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 10;
-	pos->y = 3;
+	pos->x = 6;
+	pos->y = 2;
 
 	player_t *p = malloc(sizeof(player_t));
 

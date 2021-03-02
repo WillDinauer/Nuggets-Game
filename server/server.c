@@ -16,17 +16,8 @@
 #include "hashtable.h"
 #include "set.h"
 #include "counters.h"
+#include "serverUtils.h"
 
-typedef struct serverInfo {
-    int *numPlayers;
-    int *goldCt;
-    const int maxPlayers;
-    hashtable_t *playerInfo;
-    hashtable_t *goldData;
-    counters_t *dotsPos;
-    map_t *map;
-    addr_t specAddr;
-} serverInfo_t;
 
 typedef struct countersMap {
     counters_t *ctrs;
@@ -43,27 +34,40 @@ typedef struct twoints {
     int *y;
 } twoints_t;
 
+struct findPlayer {
+	addr_t addr;
+	player_t *result;
+};
+
+/**************** Functions ****************/
 int server(char *argv[], int seed);
-static bool handleMessage(void *arg, const addr_t from, const char *message);
-void sendMaps(serverInfo_t *info);
-bool validateAction(char *keyPress, addr_t from, serverInfo_t *info);
 void splitline(char *message, char *words[]);
 player_t *player_new(addr_t from, char letter, serverInfo_t *info);
 counters_t *getDotsPos(char *map);
 bool validateParameters(int argc, char *argv[], int *seed);
-void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter);
-void sendSpectatorView(serverInfo_t *info);
-void mapSend(void *arg, const char* key, void *item);
 bool checkFile(char *fname, char *openParam);
-void sendGoldMessage(addr_t from, int collected, int purse, int remain);
-hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos);
-position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo);
-gold_t *gold_new();
+void findPos(void *arg, int key, int count);
 void goldFill(void *arg, const char *key, void *item);
 void playerFill(void *arg, const char *key, void *item);
 void onlyDots(void *arg, int key, int count);
 void keyCount(void *arg, int key, int count);
-void findPos(void *arg, int key, int count);
+hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos);
+position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo);
+gold_t *gold_new();
+
+
+/**************** Server Communication Functions ****************/
+void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter);
+void sendSpectatorView(serverInfo_t *info);
+static bool handleMessage(void *arg, const addr_t from, const char *message);
+void sendMaps(serverInfo_t *info);
+void mapSend(void *arg, const char* key, void *item);
+void sendGoldMessage(addr_t from, int collected, int purse, int remain);
+
+
+/**************** Iterators ****************/
+void findPlayerITR(void *arg, const char *key, void *item);
+
 
 int main(int argc, char *argv[])
 {
@@ -72,7 +76,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    return server(argv, seed);
+	return server(argv, seed);
 }
 
 int server(char *argv[], int seed)
@@ -168,48 +172,58 @@ hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos
 
 static bool handleMessage(void *arg, const addr_t from, const char *message)
 {
-    serverInfo_t *info = (serverInfo_t *)arg;
-    if (info == NULL) {
-        log_v("handleMessage called with arg=NULL");
-        return true;
-    }
-    hashtable_t *playerInfo = info->playerInfo;
-    int *numPlayers = info->numPlayers;
-    const int maxPlayers = info->maxPlayers;
+	serverInfo_t *info = (serverInfo_t *)arg;
+	if (info == NULL) {
+		log_v("handleMessage called with arg=NULL");
+		return true;
+	}
+	hashtable_t *playerInfo = info->playerInfo;
+	int *numPlayers = info->numPlayers;
+	const int maxPlayers = info->maxPlayers;
 
-    char *line = calloc(strlen(message) + 1, sizeof(char));
-    strcpy(line, message);
+	char *line = calloc(strlen(message) + 1, sizeof(char));
+	strcpy(line, message);
 
-    char *words[2];
-    splitline(line, words);
-    if (strcmp(words[0], "PLAY") == 0) {
-        if (*numPlayers == maxPlayers) {
-            message_send(from, "QUIT Game is full: no more players can join");
-        } else {
-            //TODO: Add check for blank player name
-            char letter = 'A' + *numPlayers;
-            player_t *player = player_new(from, letter, info);
-            if (hashtable_insert(playerInfo, words[1], player)) {
-                (*numPlayers)++;
-                sendInitialInfo(from, info, letter);
-                sendMaps(info);
-            }
-        }
-    } else if (strcmp(words[0], "KEY") == 0) {
-        if (validateAction(words[1], from, info)) {
-            sendMaps(info);
-        }
-    } else if (strcmp(words[0], "SPECTATE") == 0) {
-        addr_t specAddr = info->specAddr;
-        if (message_isAddr(specAddr)) {
-            message_send(specAddr, "QUIT You have been replaced by a new spectator.");
-        }
-        info->specAddr = from;
-        sendInitialInfo(from, info, 's');
-        sendSpectatorView(info);
-    }
-    free(line);
-    return false;
+
+	// Finding player from address
+	struct findPlayer *f = malloc(sizeof(struct findPlayer));
+	f->addr = from;
+	hashtable_iterate(info->playerInfo, f, findPlayerITR);
+	// Player that sent command
+	player_t *fromPlayer = f->result;
+	free(f);
+
+	char *words[2];
+	splitline(line, words);
+	if (strcmp(words[0], "PLAY") == 0) {
+		if (*numPlayers == maxPlayers) {
+			message_send(from, "QUIT Game is full: no more players can join");
+		} else {
+			//TODO: Add check for blank player name
+			char letter = 'A' + *numPlayers;
+			player_t *newPlayer = player_new(from, letter, info);
+			if (hashtable_insert(playerInfo, words[1], newPlayer)) {
+				(*numPlayers)++;
+				sendInitialInfo(from, info, letter);
+				sendMaps(info);
+			}
+		}
+	} else if (strcmp(words[0], "KEY") == 0) {
+		if (validateAction(words[1], fromPlayer, info)) {
+			sendMaps(info);
+		}
+	} else if (strcmp(words[0], "SPECTATE") == 0) {
+		addr_t specAddr = info->specAddr;
+		if (message_isAddr(specAddr)) {
+			message_send(specAddr, "QUIT You have been replaced by a new spectator.");
+		}
+		info->specAddr = from;
+		sendInitialInfo(from, info, 's');
+		sendSpectatorView(info);
+	}
+
+	free(line);
+	return false;
 }
 
 void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
@@ -304,29 +318,29 @@ void sendGoldMessage(addr_t address, int collected, int purse, int remain)
 
 void sendMaps(serverInfo_t *info)
 {
-    hashtable_t *playerInfo = info->playerInfo;
-    hashtable_iterate(playerInfo, info, mapSend);
+	hashtable_t *playerInfo = info->playerInfo;
+	hashtable_iterate(playerInfo, info, mapSend);
 
-    if (message_isAddr(info->specAddr)) {
-        sendSpectatorView(info);
-    }
+	if (message_isAddr(info->specAddr)) {
+		sendSpectatorView(info);
+	}
 }
 
 void sendSpectatorView(serverInfo_t *info)
 {
-    addr_t specAddr = info->specAddr;
+	addr_t specAddr = info->specAddr;
 
     map_t *baseMap = info->map;
     map_t *specMap = map_buildPlayerMap(baseMap, NULL, info->goldData, info->playerInfo);
     int len = strlen(specMap->mapStr);
 
-    char *message = malloc(len + 9);
-    strcpy(message, "DISPLAY\n");
-    strcat(message, specMap->mapStr);
-    message_send(specAddr, message);
+	char *message = malloc(len + 9);
+	strcpy(message, "DISPLAY\n");
+	strcat(message, specMap->mapStr);
+	message_send(specAddr, message);
 
-    free(message);
-    map_delete(specMap);
+	free(message);
+	map_delete(specMap);
 }
 
 void mapSend(void *arg, const char* key, void *item)
@@ -350,23 +364,18 @@ void mapSend(void *arg, const char* key, void *item)
     map_delete(playerMap);
 }
 
-bool validateAction(char *keyPress, addr_t from, serverInfo_t *info)
-{
-    //TODO: Validate action based on the map, update playerinfo accordingly
-    return true;
-}
 
 void splitline(char *message, char *words[])
 {
-    words[0] = &message[0];
-    int pos = 0;
-    while (!isspace(message[pos]) && message[pos] != '\0') {
-        pos++;
-    }
-    if (message[pos] != '\0') {
-        message[pos] = '\0';
-        words[1] = &message[pos+1];
-    }
+	words[0] = &message[0];
+	int pos = 0;
+	while (!isspace(message[pos]) && message[pos] != '\0') {
+		pos++;
+	}
+	if (message[pos] != '\0') {
+		message[pos] = '\0';
+		words[1] = &message[pos+1];
+	}
 }
 
 player_t *player_new(addr_t from, char letter, serverInfo_t *info)
@@ -505,60 +514,72 @@ gold_t *gold_new()
 
 counters_t *getDotsPos(char *map)
 {
-    counters_t *dotsPos = counters_new();
-    int pos;
-    int len = strlen(map);
-    for (pos = 0; pos < len; pos++) {
-        if (map[pos] == '.') {
-            counters_add(dotsPos, pos);
-        }
-    }
-    return dotsPos;
+	counters_t *dotsPos = counters_new();
+	int pos;
+	int len = strlen(map);
+	for (pos = 0; pos < len; pos++) {
+		if (map[pos] == '.') {
+			counters_add(dotsPos, pos);
+		}
+	}
+	return dotsPos;
 }
 
 bool validateParameters(int argc, char *argv[], int *seed)
 {
-    // validate number of arguments
-    if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: ./server map.txt [seed]\n");
-        return false;
-    }
-    
-    // validate the map file (ensure it is readable)
-    if (!checkFile(argv[1], "r")) {
-        fprintf(stderr, "map file '%s' is not a readable file\n", argv[1]);
-        return false;
-    }
+	// validate number of arguments
+	if (argc < 2 || argc > 3) {
+		fprintf(stderr, "usage: ./server map.txt [seed]\n");
+		return false;
+	}
+	
+	// validate the map file (ensure it is readable)
+	if (!checkFile(argv[1], "r")) {
+		fprintf(stderr, "map file '%s' is not a readable file\n", argv[1]);
+		return false;
+	}
 
-    // validate seed, if provided
-    if (argc == 3) {
-        char val;
-        if ((sscanf(argv[2], "%d%c", seed, &val)) != 1) {      // ensures optional seed parameter is solely an integer
-            fprintf(stderr, "%s is not a valid integer\n", argv[3]);
-            return false;
-        } 
-    }
+	// validate seed, if provided
+	if (argc == 3) {
+		char val;
+		if ((sscanf(argv[2], "%d%c", seed, &val)) != 1) {      // ensures optional seed parameter is solely an integer
+			fprintf(stderr, "%s is not a valid integer\n", argv[3]);
+			return false;
+		} 
+	}
 
-    return true;
+	return true;
 }
 
 bool checkFile(char *fname, char *openParam)
 {
-    FILE *fp;
-    int fileLen = strlen(fname);              // length of the file's name
-    char *filename = calloc(fileLen + 1, sizeof(char));    // allocate memory to hold file plus '\0'
-    if (filename == NULL) { // error allocating memory
-        return false;
-    }
-    strcpy(filename, fname);        // concatenate the filename
-    // try to open the file based on the openParam; on success clean-up and return true
-    if ((fp = fopen(filename, openParam))) {
-        fclose(fp);
-        free(filename);
-        return true;
-    }
-    // return false if the file could not be opened
-    free(filename);
-    return false;
+	FILE *fp;
+	int fileLen = strlen(fname);              // length of the file's name
+	char *filename = calloc(fileLen + 1, sizeof(char));    // allocate memory to hold file plus '\0'
+	if (filename == NULL) { // error allocating memory
+		return false;
+	}
+	strcpy(filename, fname);        // concatenate the filename
+	// try to open the file based on the openParam; on success clean-up and return true
+	if ((fp = fopen(filename, openParam))) {
+		fclose(fp);
+		free(filename);
+		return true;
+	}
+	// return false if the file could not be opened
+	free(filename);
+	return false;
 }
 
+
+
+
+void findPlayerITR(void *arg, const char *key, void *item)
+{
+	struct findPlayer *fp = arg;
+	player_t *p = item;
+
+	if (message_eqAddr(p->addr, fp->addr)){
+		fp->result = p;
+	}
+}

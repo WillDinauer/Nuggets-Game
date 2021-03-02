@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "map.h"
+#include "message.h"
 #include "hashtable.h"
 
 /**************** Private Functions ****************/
@@ -81,10 +82,6 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashta
 {
 	map_t *outMap = map_copy(map);
 
-	// Adding player to map
-	int plyIndx = map_calcPosition(outMap, player->pos);
-	outMap->mapStr[plyIndx] = '@';
-
 	// Adding all the gold to the map
 	gold_t *g;
 	int i = 0;
@@ -99,10 +96,16 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashta
 	}
 
 	if (players != NULL){
-		// Adding the other players to the map
+		// Adding the players to the map
 		hashtable_iterate(players, outMap, addPlayerITR);
 	}
 
+    // Replace this player's letter with '@'
+    if (player != NULL) {
+	    int plyIndx = map_calcPosition(outMap, player->pos);
+	    outMap->mapStr[plyIndx] = '@';
+    }
+    outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
 }
@@ -111,9 +114,10 @@ void addPlayerITR(void *arg, const char *key, void *item)
 {
 	map_t *map = arg;
 	player_t *player = item;
-
-	int plyIndx = map_calcPosition(map, player->pos);
-	map->mapStr[plyIndx] = player->name;
+    if (player->isActive) {
+	    int plyIndx = map_calcPosition(map, player->pos);
+	    map->mapStr[plyIndx] = player->letter;
+    }
 }	
 
 

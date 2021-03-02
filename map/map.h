@@ -8,7 +8,7 @@
 #define __MAP_H
 
 #include "hashtable.h"
-
+#include "message.h"
 /******************************** DATA STRUCTS ********************************/
 
 /**************** position ****************/
@@ -16,16 +16,15 @@ typedef struct position {
 	int x, y;
 } position_t;
 
-
 /**************** player ****************/
 typedef struct player {
-	int goldCollected;
-	char name;
-	bool isActive;
-	position_t *pos;
-
+    addr_t addr;
+    position_t *pos;
+    int gold;
+    char letter;
+    bool isActive;
+    char *visibility;
 } player_t;
-
 
 /**************** gold ****************/
 typedef struct gold {

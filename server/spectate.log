@@ -1,0 +1,9 @@
+START OF LOG
+player on port 59237
+spectate
+GRID message received: GRID 5 14
+displayStart: Success
+wRows = 24
+wCols = 105
+GOLD message received: GOLD 0 0 200
+DISPLAY message received

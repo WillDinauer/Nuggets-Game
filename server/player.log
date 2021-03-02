@@ -1,0 +1,10 @@
+START OF LOG
+player on port 41032
+interactive player mode; name 'jimmy'
+GRID message received: GRID 5 14
+displayStart: Success
+wRows = 24
+wCols = 105
+OK message received: OK A
+GOLD message received: GOLD 0 0 200
+DISPLAY message received

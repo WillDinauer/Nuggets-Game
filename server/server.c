@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <string.h>
+#include "map.h"
 #include "message.h"
 #include "log.h"
 #include "hashtable.h"
@@ -20,13 +21,11 @@ typedef struct serverInfo {
     const int maxPlayers;
     hashtable_t *playerInfo;
     counters_t *dotsPos;
-    char *map;
-    int NR;
-    int NC;
+    map_t *map;
     addr_t specAddr;
 } serverInfo_t;
 
-typedef struct player {
+/*typedef struct player {
     addr_t addr;
     int x;
     int y;
@@ -34,12 +33,7 @@ typedef struct player {
     char letter;
     bool isActive;
     char *visibility;
-} player_t;
-
-typedef struct pos {
-    int x;
-    int y;
-} pos_t;
+} player_t;*/
 
 
 int server(char *argv[], int seed);
@@ -48,12 +42,14 @@ void sendMaps(serverInfo_t *info);
 bool validateAction(char *keyPress, addr_t from, serverInfo_t *info);
 void splitline(char *message, char *words[]);
 player_t *player_new(addr_t from, char letter, serverInfo_t *info);
-pos_t *newPlayerPos(serverInfo_t *info);
+position_t *newPlayerPos(serverInfo_t *info);
 counters_t *getDotsPos(char *map);
 bool validateParameters(int argc, char *argv[], int *seed);
-void sendGrid(const addr_t from, int NR, int NC);
+void sendInitialInfo(const addr_t from, int NR, int NC, char letter);
 void sendSpectatorView(serverInfo_t *info);
 void mapSend(void *arg, const char* key, void *item);
+bool checkFile(char *fname, char *openParam);
+void sendGoldMessage(const addr_t from, serverInfo_t *info);
 
 int main(int argc, char *argv[])
 {
@@ -74,18 +70,24 @@ int server(char *argv[], int seed)
     //static const int GoldMaxNumPiles = 30; // maximum number of gold piles
     int numPlayers = 0;
     hashtable_t *playerInfo = hashtable_new(maxPlayers);
-    int NC = 0;
-    int NR = 0;
-    char *map = "    ";
     addr_t specAddr = message_noAddr();
-    //char *map = map_new(argv[1]);
+
+    // read the map file to create the map
+    FILE *fp;
+    int len = strlen(argv[1]);
+    char *mapfile = calloc(len + 1, sizeof(char));
+    strcpy(mapfile, argv[1]);
+    fp = fopen(mapfile, "r");
+    map_t *map = map_new(fp);
+    free(mapfile);
+
     if (map == NULL) {
         fprintf(stderr, "unable to load map");
         return 2;
     }
 
-    counters_t *dotsPos = getDotsPos(map);
-    serverInfo_t info = {&numPlayers, maxPlayers, playerInfo, dotsPos, map, NR, NC, specAddr};
+    counters_t *dotsPos = getDotsPos(map->mapStr);
+    serverInfo_t info = {&numPlayers, maxPlayers, playerInfo, dotsPos, map, specAddr};
     
     log_init(stderr);
     int serverPort = message_init(stderr);
@@ -127,7 +129,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
             player_t *player = player_new(from, letter, info);
             if (hashtable_insert(playerInfo, words[1], player)) {
                 (*numPlayers)++;
-                sendGrid(from, info->NR, info->NC);
+                sendInitialInfo(from, info->map->height, info->map->width, letter);
                 sendMaps(info);
             }
         }
@@ -141,13 +143,14 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
             message_send(specAddr, "QUIT You have been replaced by a new spectator.");
         }
         info->specAddr = from;
+        sendInitialInfo(from, info->map->height, info->map->width, 's');
         sendSpectatorView(info);
     }
     free(line);
     return false;
 }
 
-void sendGrid(const addr_t from, int NR, int NC)
+void sendInitialInfo(const addr_t from, int NR, int NC, char letter)
 {
     int NRlen = snprintf(NULL, 0, "%d", NR);
     int NClen = snprintf(NULL, 0, "%d", NC);
@@ -156,16 +159,48 @@ void sendGrid(const addr_t from, int NR, int NC)
     snprintf(NRstr, NRlen + 1, "%d", NR);
     snprintf(NCstr, NClen + 1, "%d", NC);
 
+    // send the "GRID NR NC" message to the client
     char *message = malloc(NRlen + NClen + 7);
-    strcpy(message, "GRID ");
-    strcat(message, NRstr);
-    strcat(message, " ");
-    strcat(message, NCstr);
-    message_send(from, message);
+    if (message != NULL && NRstr != NULL && NCstr != NULL) {
+        strcpy(message, "GRID ");
+        strcat(message, NRstr);
+        strcat(message, " ");
+        strcat(message, NCstr);
+        message_send(from, message);
+        free(NRstr);
+        free(NCstr);
+        free(message);
+    }
 
-    free(NRstr);
-    free(NCstr);
-    free(message);
+    if (letter != 's') {    // indicates whether the client is a spectator or a player
+    // send the "OK L" message to the client
+        char *letterMessage = malloc(5);
+        if (letterMessage != NULL) {
+            strcpy(letterMessage, "OK ");
+            letterMessage[3] = letter;
+            letterMessage[4] = '\0';
+            message_send(from, letterMessage);
+            free(letterMessage);
+        }
+    }
+
+    //TODO: general gold messages
+    char *goldMessage = malloc(13);
+    if (goldMessage != NULL) {
+        strcpy(goldMessage, "GOLD 0 0 200");
+        message_send(from, goldMessage);
+        free(goldMessage);
+    }
+}
+
+void sendGoldMessage(const addr_t from, serverInfo_t *info)
+{
+    char *goldMessage = malloc(13);
+    if (goldMessage != NULL) {
+        strcpy(goldMessage, "GOLD 0 0 200");
+        message_send(from, goldMessage);
+        free(goldMessage);
+    }
 }
 
 void sendMaps(serverInfo_t *info)
@@ -181,35 +216,39 @@ void sendMaps(serverInfo_t *info)
 void sendSpectatorView(serverInfo_t *info)
 {
     addr_t specAddr = info->specAddr;
-    //TODO: Construct the spectator's map
 
-    char *specMap = "spectator map";
-    int len = strlen(specMap);
+    map_t *baseMap = info->map;
+    map_t *specMap = map_buildPlayerMap(baseMap, NULL, NULL, info->playerInfo);
+    int len = strlen(specMap->mapStr);
 
     char *message = malloc(len + 9);
     strcpy(message, "DISPLAY\n");
-    strcat(message, specMap);
+    strcat(message, specMap->mapStr);
     message_send(specAddr, message);
 
     free(message);
+    map_delete(specMap);
 }
 
 void mapSend(void *arg, const char* key, void *item)
 {
-    //serverInfo_t *info = (serverInfo_t *)arg;
+    serverInfo_t *info = (serverInfo_t *)arg;
     player_t *player = (player_t *)item;
+    hashtable_t *playerInfo = info->playerInfo;
     //TODO: Construct the map for the individual user
     
-    char* newMap = "player map";
-    int len = strlen(newMap);
+    map_t *baseMap = info->map;
+    map_t *playerMap = map_buildPlayerMap(baseMap, player, NULL, playerInfo); 
+    int len = strlen(playerMap->mapStr);
 
     char *message = malloc(len + 9);
     strcpy(message, "DISPLAY\n");
-    strcat(message, newMap);
+    strcat(message, playerMap->mapStr);
     addr_t addr = player->addr;
     message_send(addr, message);
 
     free(message);
+    map_delete(playerMap);
 }
 
 bool validateAction(char *keyPress, addr_t from, serverInfo_t *info)
@@ -243,19 +282,16 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     player->gold = 0;
     player->visibility = "";    //TODO: Visibility
 
-    pos_t *pos = newPlayerPos(info);
-
-    player->x = pos->x;
-    player->y = pos->y;
+    player->pos = newPlayerPos(info);
 
     return player;
 }
 
-pos_t *newPlayerPos(serverInfo_t *info)
+position_t *newPlayerPos(serverInfo_t *info)
 {
-    int x = 0;
-    int y = 0;
-    pos_t *pos = malloc(sizeof(pos_t));
+    int x = 5;
+    int y = 3;
+    position_t *pos = malloc(sizeof(position_t));
     //TODO: check existing player positions and gold positions and choose from remaining empty "." spaces to generate random x/y
     pos->x = x;
     pos->y = y;
@@ -283,6 +319,12 @@ bool validateParameters(int argc, char *argv[], int *seed)
         return false;
     }
     
+    // validate the map file (ensure it is readable)
+    if (!checkFile(argv[1], "r")) {
+        fprintf(stderr, "map file '%s' is not a readable file\n", argv[1]);
+        return false;
+    }
+
     // validate seed, if provided
     if (argc == 3) {
         char val;
@@ -294,3 +336,24 @@ bool validateParameters(int argc, char *argv[], int *seed)
 
     return true;
 }
+
+bool checkFile(char *fname, char *openParam)
+{
+    FILE *fp;
+    int fileLen = strlen(fname);              // length of the file's name
+    char *filename = calloc(fileLen + 1, sizeof(char));    // allocate memory to hold file plus '\0'
+    if (filename == NULL) { // error allocating memory
+        return false;
+    }
+    strcpy(filename, fname);        // concatenate the filename
+    // try to open the file based on the openParam; on success clean-up and return true
+    if ((fp = fopen(filename, openParam))) {
+        fclose(fp);
+        free(filename);
+        return true;
+    }
+    // return false if the file could not be opened
+    free(filename);
+    return false;
+}
+

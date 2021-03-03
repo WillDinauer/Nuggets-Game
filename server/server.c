@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
 
 int server(char *argv[], int seed)
 {
+    // initialize variables to be stored as the server information
     //static const int MaxNameLength = 50;   // max number of chars in playerName
     static const int maxPlayers = 26;      // maximum number of players
   
@@ -109,19 +110,27 @@ int server(char *argv[], int seed)
         fprintf(stderr, "unable to load map");
         return 2;
     }
+    // create the counters which holds the integer positions of '.' in the map
     counters_t *dotsPos = getDotsPos(map->mapStr);
+    // generate the gold randomly (or based on the seed) and store in a hashtable
     hashtable_t *goldData = generateGold(map, seed, &goldCt, dotsPos);
 
+    // construct the serverInfo object which holds all the relevant data for the server
     serverInfo_t info = {&numPlayers, &goldCt, maxPlayers, playerInfo, goldData, dotsPos, map, specAddr};
     
+    // start logging
     log_init(stderr);
+    // initialize messages; listen on a port
     int serverPort = message_init(stderr);
     if (serverPort == 0) {
         return 3;
     }
     printf("waiting for connections on port %d\n", serverPort);
 
+    // continue looping, listening for messages until the end of the game is triggered
     message_loop(&info, 0, NULL, NULL, handleMessage);
+
+    // clean up
     message_done();
     log_done();
     //TODO: add hashtable delete
@@ -135,53 +144,57 @@ hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos
     static const int GoldMinNumPiles = 10; // minimum number of gold piles
     static const int GoldMaxNumPiles = 30; // maximum number of gold piles
 
+    // randomize either based on the seed or the pid
     if (seed == -1) {
         srand(getpid());
     } else {
         srand(seed);
     }
 
-    *goldCt = GoldTotal;
-    int goldToPlace = GoldTotal;
-    int numPiles = 0;
-    hashtable_t *goldInfo = hashtable_new(GoldMinNumPiles);
+    *goldCt = GoldTotal;            // tracks the uncollected gold in the server
+    int goldToPlace = GoldTotal;    // amount of gold to place into the map
+    int numPiles = 0;               // total number of gold piles; must ultimately be between goldMin to goldMax piles
+    hashtable_t *goldInfo = hashtable_new(GoldMinNumPiles);     // initialize the goldInfo hashtable to store gold data
     
-    while (goldToPlace != 0) {
-        gold_t *gold = gold_new();
+    while (goldToPlace != 0) {      // loop until all gold placed
+        gold_t *gold = gold_new();  // create the new pile of gold to be placed
 
         // generate gold for a pile to ensure min num piles, and a pile has at least 1 gold
         int value = (rand() % GoldTotal/GoldMinNumPiles) + 1; 
-        // generate a random position for the gold
+        // generate a random position for the gold (must be an unoccupied '.' character)
         position_t *pos = getRandomPos(map, dotsPos, goldInfo, NULL);
         //TODO: HANDLE NULL POS: THERE ARE NO MORE VALID POSITIONS FOR GOLD (might have to make a nextPos)
 
+        // if the random value is less than the remaining gold OR we have reached the max number of piles...
         if (goldToPlace-value < 0 || numPiles+1 == GoldMaxNumPiles) {
-            value = goldToPlace;
-            goldToPlace = 0;
+            value = goldToPlace;        // set the value to the remaining gold to place
+            goldToPlace = 0;            // no more gold left to place!
         } else {
-            goldToPlace -= value;
+            goldToPlace -= value;       // otherwise, subtrace the value from the remaining gold to place
         }
 
         gold->value = value;
         gold->pos = pos;
 
+        // convert the pile number into a string
         int npLen = snprintf(NULL, 0, "%d", numPiles);
         char *numPileStr = malloc(npLen + 1);
         snprintf(numPileStr, npLen + 1, "%d", numPiles);
 
+        // insert the gold into the hashtable
         hashtable_insert(goldInfo, numPileStr, gold);
 
         free(numPileStr);
-        numPiles++;
+        numPiles++;     // increment the number of piles
 
     }
-    return goldInfo;
+    return goldInfo;    // return the hashtable with the newly generated gold data
 }
 
 static bool handleMessage(void *arg, const addr_t from, const char *message)
 {
 	serverInfo_t *info = (serverInfo_t *)arg;
-	if (info == NULL) {
+	if (info == NULL) {     // defensive programming
 		log_v("handleMessage called with arg=NULL");
 		return true;
 	}
@@ -189,11 +202,15 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	int *numPlayers = info->numPlayers;
 	const int maxPlayers = info->maxPlayers;
 
+    // create memory to pass the message to the splitline function
 	char *line = calloc(strlen(message) + 1, sizeof(char));
 	strcpy(line, message);
 
+    // split the message into an array of two words (a message from the client is always 1-2 words)
 	char *words[2];
 	splitline(line, words);
+
+    // call the appropriate function relevant to the first word provided by the client
 	if (strcmp(words[0], "PLAY") == 0) {
 		if (*numPlayers == maxPlayers) {
 			message_send(from, "QUIT Game is full: no more players can join");

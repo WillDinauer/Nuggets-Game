@@ -426,9 +426,9 @@ void sendQuit(serverInfo_t *info)
     hashtable_iterate(playerInfo, result, buildGameOverString);
     hashtable_iterate(playerInfo, result, quitFunc);
 
-    // if (message_isAddr(info->specAddr)) {
-    //     message_send(info->specAddr, result);
-    // }
+    if (message_isAddr(info->specAddr)) {
+        message_send(info->specAddr, result);
+    }
 }
 
 void buildGameOverString(void *arg, const char *key, void *item)

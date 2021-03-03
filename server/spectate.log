@@ -1,5 +1,5 @@
 START OF LOG
-player on port 38510
+player on port 47296
 spectate
 GRID message received: GRID 21 79
 displayStart: Success
@@ -13,7 +13,9 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 232
+GOLD message received: GOLD 0 0 239
+DISPLAY message received
+GOLD message received: GOLD 0 0 217
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -21,47 +23,29 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 209
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 202
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 208
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 193
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 GOLD message received: GOLD 0 0 183
 DISPLAY message received
-GOLD message received: GOLD 0 0 173
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 164
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 146
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -80,12 +64,12 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 145
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 165
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -95,6 +79,7 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 152
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -103,14 +88,19 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 151
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 142
 DISPLAY message received
+GOLD message received: GOLD 0 0 125
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 115
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 108
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -121,37 +111,35 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 143
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 124
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 113
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 105
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 93
 DISPLAY message received
+GOLD message received: GOLD 0 0 85
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 77
 DISPLAY message received
+GOLD message received: GOLD 0 0 61
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -159,14 +147,68 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 64
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 54
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 57
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 53
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -174,7 +216,6 @@ DISPLAY message received
 DISPLAY message received
 GOLD message received: GOLD 0 0 41
 DISPLAY message received
-GOLD message received: GOLD 0 0 19
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
@@ -188,10 +229,19 @@ DISPLAY message received
 DISPLAY message received
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 5
 DISPLAY message received
 DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 29
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 27
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 16
 DISPLAY message received
 GOLD message received: GOLD 0 0 0
-QUIT message received: QUIT GAME OVER
-END OF LOG

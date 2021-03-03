@@ -184,15 +184,6 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	char *line = calloc(strlen(message) + 1, sizeof(char));
 	strcpy(line, message);
 
-
-	// Finding player from address
-	struct findPlayer *f = malloc(sizeof(struct findPlayer));
-	f->addr = from;
-	hashtable_iterate(info->playerInfo, f, findPlayerITR);
-	// Player that sent command
-	player_t *fromPlayer = f->result;
-	free(f);
-
 	char *words[2];
 	splitline(line, words);
 	if (strcmp(words[0], "PLAY") == 0) {
@@ -209,6 +200,14 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 			}
 		}
 	} else if (strcmp(words[0], "KEY") == 0) {
+        // Finding player from address
+	    struct findPlayer *f = malloc(sizeof(struct findPlayer));
+	    f->addr = from;
+	    hashtable_iterate(info->playerInfo, f, findPlayerITR);
+	    // Player that sent command
+	    player_t *fromPlayer = f->result;
+	    free(f);
+
 		if (validateAction(words[1], fromPlayer, info)) {
 			sendMaps(info);
 		}

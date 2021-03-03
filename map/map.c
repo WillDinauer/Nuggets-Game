@@ -15,7 +15,7 @@
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
-char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
+char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
 bool canPlayerCanMoveTo(map_t *map, position_t *pos);
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
@@ -195,7 +195,7 @@ map_t *map_copy(map_t *map)
 
 
 /**************** map_calculateVisibility ****************/
-char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
+char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
 {
 	return "Place Holder";
 }

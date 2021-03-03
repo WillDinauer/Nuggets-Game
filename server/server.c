@@ -69,14 +69,13 @@ void sendSpectatorView(serverInfo_t *info);
 static bool handleMessage(void *arg, const addr_t from, const char *message);
 void sendMaps(serverInfo_t *info);
 void sendQuit(serverInfo_t *info);
-void mapSend(void *arg, const char* key, void *item);
-void quitFunc(void *arg, const char *key, void *item);
 void sendGoldMessage(addr_t from, int collected, int purse, int remain);
-
 
 /**************** Iterators ****************/
 void findPlayerITR(void *arg, const char *key, void *item);
-
+void buildGameOverString(void *arg, const char *key, void *item);
+void mapSend(void *arg, const char* key, void *item);
+void quitFunc(void *arg, const char *key, void *item);
 
 int main(int argc, char *argv[])
 {
@@ -359,19 +358,39 @@ void sendMaps(serverInfo_t *info)
 void sendQuit(serverInfo_t *info)
 {
     //TODO: BUILD THE GAME OVER STRING TO SEND TO ALL ACTIVE PLAYERS
-    char *results = "QUIT GAME OVER";
+    char result[16];
+    strcpy(result, "QUIT GAME OVER\n");
 
 
     hashtable_t *playerInfo = info->playerInfo;
-    hashtable_iterate(playerInfo, results, quitFunc);
+    hashtable_iterate(playerInfo, result, buildGameOverString);
+    hashtable_iterate(playerInfo, result, quitFunc);
 
-    if (message_isAddr(info->specAddr)) {
-        message_send(info->specAddr, results);
-    }
+    // if (message_isAddr(info->specAddr)) {
+    //     message_send(info->specAddr, result);
+    // }
 }
+
+void buildGameOverString(void *arg, const char *key, void *item)
+{
+    char *result = arg;
+    player_t *player = item;
+
+
+    int bufsize = 100; // TODO make this more robust when actual name is implemented
+    char *plyRes = malloc(bufsize); 
+    snprintf(plyRes, bufsize, "%c\t%d\t%s\n", player->letter, player->gold, key); // TODO add actual name when we include that in player_t
+    plyRes = realloc(plyRes, strlen(plyRes) * sizeof(char));
+    
+    strncat(result, plyRes, strlen(result) + strlen(plyRes));
+
+    free(plyRes);
+}
+
 
 void quitFunc(void *arg, const char *key, void *item)
 {
+    // Sending a player a quit message
     char *result = arg;
     player_t *player = item;
     message_send(player->addr, result);

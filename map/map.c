@@ -284,6 +284,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 
 	player->pos->x = newPos->x;
 	player->pos->y = newPos->y;
+
+    // set nextPos x and y to check if the player moved
+    nextPos->x = player->pos->x;
+    nextPos->y = player->pos->y;
+
 	free(newPos);
 	return;
 }

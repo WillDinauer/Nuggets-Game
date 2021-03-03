@@ -74,8 +74,16 @@ bool validateAction(char *keyPress, player_t *player, serverInfo_t *info)
 			break;
 	}
 
+    int x = player->pos->x;
+    int y = player->pos->y;
 	// Check the move player 
 	map_movePlayer(info->map, player, nextPos);
 
+    if (x == nextPos->x && y == nextPos-> y) {
+        free(nextPos);
+        return false;
+    }
+
+    free(nextPos);
 	return true;
 }

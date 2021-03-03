@@ -39,6 +39,12 @@ struct findPlayer {
 	player_t *result;
 };
 
+typedef struct goldBundle {
+    player_t *player;
+    addr_t specAddr;
+    int *goldCt;
+} gb_t;
+
 /**************** Functions ****************/
 int server(char *argv[], int seed);
 void splitline(char *message, char *words[]);
@@ -49,6 +55,7 @@ bool checkFile(char *fname, char *openParam);
 void findPos(void *arg, int key, int count);
 void goldFill(void *arg, const char *key, void *item);
 void playerFill(void *arg, const char *key, void *item);
+void checkGoldCollect(void *arg, const char *key, void *item);
 void onlyDots(void *arg, int key, int count);
 void keyCount(void *arg, int key, int count);
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos);
@@ -61,7 +68,9 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter);
 void sendSpectatorView(serverInfo_t *info);
 static bool handleMessage(void *arg, const addr_t from, const char *message);
 void sendMaps(serverInfo_t *info);
+void sendQuit(serverInfo_t *info);
 void mapSend(void *arg, const char* key, void *item);
+void quitFunc(void *arg, const char *key, void *item);
 void sendGoldMessage(addr_t from, int collected, int purse, int remain);
 
 
@@ -208,8 +217,30 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	    player_t *fromPlayer = f->result;
 	    free(f);
 
-		if (validateAction(words[1], fromPlayer, info)) {
-			sendMaps(info);
+        if (words[1][0] == 'Q') {
+            if (message_eqAddr(from, info->specAddr)) {
+                info->specAddr = message_noAddr();
+                message_send(from, "QUIT Thanks for watching!");
+            } else {
+                //TODO: if there are no active players, end the game; shutdown the server
+                fromPlayer->isActive = false;
+                message_send(from, "QUIT Thanks for playing!");
+            }
+            sendMaps(info);
+        } else {
+            if (validateAction(words[1], fromPlayer, info)) {
+			    hashtable_t *goldData = info->goldData;
+
+                gb_t goldBundle = {fromPlayer, info->specAddr, info->goldCt};
+                hashtable_iterate(goldData, &goldBundle, checkGoldCollect);
+
+                if(*info->goldCt == 0) {
+                    sendQuit(info);
+                    return true;
+                } else {
+                    sendMaps(info);
+                }
+            }
 		}
 	} else if (strcmp(words[0], "SPECTATE") == 0) {
 		addr_t specAddr = info->specAddr;
@@ -325,6 +356,27 @@ void sendMaps(serverInfo_t *info)
 	}
 }
 
+void sendQuit(serverInfo_t *info)
+{
+    //TODO: BUILD THE GAME OVER STRING TO SEND TO ALL ACTIVE PLAYERS
+    char *results = "QUIT GAME OVER";
+
+
+    hashtable_t *playerInfo = info->playerInfo;
+    hashtable_iterate(playerInfo, results, quitFunc);
+
+    if (message_isAddr(info->specAddr)) {
+        message_send(info->specAddr, results);
+    }
+}
+
+void quitFunc(void *arg, const char *key, void *item)
+{
+    char *result = arg;
+    player_t *player = item;
+    message_send(player->addr, result);
+}
+
 void sendSpectatorView(serverInfo_t *info)
 {
 	addr_t specAddr = info->specAddr;
@@ -437,6 +489,26 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
     }
 }
 
+void checkGoldCollect(void *arg, const char *key, void *item)
+{
+    gb_t *goldBundle = arg;
+    player_t *player = goldBundle->player;
+    addr_t specAddr = goldBundle->specAddr;
+    int *goldCt = goldBundle->goldCt;
+    gold_t *gold = item;
+
+    if (!gold->isCollected && player->pos->x == gold->pos->x && player->pos->y == gold->pos->y) {
+        gold->isCollected = true;
+        int value = gold->value;
+        int collected = player->gold;
+        player->gold = collected + value;
+        (*goldCt) -= value;
+
+        sendGoldMessage(player->addr, value, player->gold, *goldCt);
+        sendGoldMessage(specAddr, 0, 0, *goldCt);
+    }
+}
+
 void findPos(void *arg, int key, int count)
 {
     twoints_t *t = arg;
@@ -474,9 +546,11 @@ void playerFill(void *arg, const char *key, void *item)
     player_t *player = item;
     position_t *pos = player->pos;
 
-    int val = map_calcPosition(map, pos);
+    if (player->isActive) {
+        int val = map_calcPosition(map, pos);
 
-    counters_add(filled, val);
+        counters_add(filled, val);
+    }
 }
 
 void onlyDots(void *arg, int key, int count)

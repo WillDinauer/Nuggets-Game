@@ -57,174 +57,203 @@ Once all gold has been collected, the server sends a QUIT message to all players
 		* ii. Otherwise, set the player to be inactive by setting their isActive bool to false. Send them a message to quit.
 		* iii. IF there are no more players left in the game, close the server
 		* iv. Otherwise, send the map with the player that quit to all existing clients
-	* Validate the action of the player by calling `validateAction`
-Check if the player collected gold by iterating over the gold positions and comparing the player’s position, sending gold messages and updating gold data if so (covered in `checkGoldCollect`)
-IF the gold remaining to be collected reaches 0…
-Send the GAME OVER screen to all clients and return true to stop looping
-Otherwise, send the update maps as usual
-IF words[1] is “SPECTATE”
-If there is an existing spectator (checked by calling message_isAddr on the spectator address), send them a quit message
-Update the spectator address to the address the message came from
-Send the spectator the initial required info by calling `sendInitialInfo`
-Send the spectator the full spectator view of the map by calling `sendSpectatorView`
-Return false to continue looping
+	* c. Validate the action of the player by calling `validateAction`
+	* d. Check if the player collected gold by iterating over the gold positions and comparing the player’s position, sending gold messages and updating gold data if so (covered in `checkGoldCollect`)
+	* e. IF the gold remaining to be collected reaches 0…send the GAME OVER screen to all clients and return true to stop looping
+	* f. Otherwise, send the update maps as usual
+5. IF words[1] is “SPECTATE”
+	a. If there is an existing spectator (checked by calling message_isAddr on the spectator address), send them a quit message
+	b. Update the spectator address to the address the message came from
+	c. Send the spectator the initial required info by calling `sendInitialInfo`
+	d. Send the spectator the full spectator view of the map by calling `sendSpectatorView`
+6. Return false to continue looping
+
+`validateAction` 
+1. Takes a keypress as an input checks if it is a valid key of movement
+2. Valid keys are “h,l,j,k,y,u,b,n” and the corresponding capital of each key move the player as far as possible in that direction
+3. Calls `map_movePlayer` to move the player in the specified direction
+
 
 `sendInitialInfo`
-Convert the integer values of the map’s height and width into strings
-Build up the `GRID NC NR` message and send it to the provided address using `message_send`
-If the method call is coming from a player, indicated by a valid letter parameter, send the build and send the `OK L` message to the player to tell them their player letter
-Send the initial gold message by calling `sendGoldMessage`
+1. Convert the integer values of the map’s height and width into strings
+2. Build up the `GRID NC NR` message and send it to the provided address using `message_send`
+3. If the method call is coming from a player, indicated by a valid letter parameter, send the build and send the `OK L` message to the player to tell them their player letter
+4. Send the initial gold message by calling `sendGoldMessage`
 
 `sendGoldMessage`
-Convert the provided integers into strings
-Build and send the GOLD n p r string to tell the player or spectator the amount of gold collected, in their purse, and left in the game
+1. Convert the provided integers into strings
+2. Build and send the GOLD n p r string to tell the player or spectator the amount of gold collected, in their purse, and left in the game
 
 `sendMaps`
-Iterate over each player in the playerInfo hashtable, calling ‘mapSend’ to construct and send their individualized map
-IF there is a spectator (by checking for a valid stored spectator address), send the spectator view to the spectator’s address
+1. Iterate over each player in the playerInfo hashtable, calling ‘mapSend’ to construct and send their individualized map
+2. IF there is a spectator (by checking for a valid stored spectator address), send the spectator view to the spectator’s address
 
 `sendQuit`
-Construct the GAME OVER screen by building into a string starting with “QUIT GAME OVER”
-Iterate over the player hashtable to add each player as a line to the GAME OVER string, reallocating memory to build the string as it goes along
-Iterate over the player hashtable again to send each player the GAME OVER string
-IF there is a spectator, send the spectator the GAME OVER string as well
+1. Construct the GAME OVER screen by building into a string starting with “QUIT GAME OVER”
+2. Iterate over the player hashtable to add each player as a line to the GAME OVER string, reallocating memory to build the string as it goes along
+3. Iterate over the player hashtable again to send each player the GAME OVER string
+4. IF there is a spectator, send the spectator the GAME OVER string as well
 
 `sendSpectatorView`
-Get the unaltered map stored by the server
-Build the spectator specific map by calling the `map_buildPlayerMap` function with NULL as a player parameter
-Build the DISPLAY message and send it to the spectator’s address
+1. Get the unaltered map stored by the server
+2. Build the spectator specific map by calling the `map_buildPlayerMap` function with NULL as a player parameter
+3. Build the DISPLAY message and send it to the spectator’s address
 
 `mapSend`
-Get the map stored by the server
-Build the player specific map by calling the `map_buildPlayerMap` function
-Build the DISPLAY message and send it to the player’s address
+1. Get the map stored by the server
+2. Build the player specific map by calling the `map_buildPlayerMap` function
+3. Build the DISPLAY message and send it to the player’s address
 
 `player_new`
-Malloc data for a new `player_t` struct
-Initialize player info, setting isActive to true and their initial gold to 0. Also start with a visibility string of all zeros
-Get a random, unoccupied position for the player by calling `getRandomPos`
-Return the player
+1. Malloc data for a new `player_t` struct
+2. Initialize player info, setting isActive to true and their initial gold to 0. Also start with a visibility string of all zeros
+3. Get a random, unoccupied position for the player by calling `getRandomPos`
+4. Return the player
 
 `gold_new`
-Malloc data for a new `gold_t` struct
-Initialize value to 0, isCollected to false, and its position to NULL
-Return the gold
+1. Malloc data for a new `gold_t` struct
+2. Initialize value to 0, isCollected to false, and its position to NULL
+3. Return the gold
 
 `getRandomPos`
-Create a `counters` structure to store the occupied ‘.’ spaces in the map
-Create a `ctrsmap` bundle to be passed to `hashtable_iterate`, storing the new counters and the server’s stored map
-Iterate through the gold and player hashtables, adding the positions of all uncollected gold and active players to the occupied `counters`
-Create another `counters` structure to store the valid, unoccupied positions
-Create a `twoctrs` structure to hold the occupied counters and the validPositions counters
-Iterate through the counters of all positions of ‘.’ in the map, adding any positions that are not in the occupied counters to the valid positions counters
-Iterate through the valid positions counters to get the number of nodes (# of valid positions) in the counters, numValidPos
-Select a random node by calling rand()%numValidPos
-Iterate through the valid positions counters until that specific node is reached, grabbing and storing its integer value (the key)
-Convert the integer value to an (x, y) position in the map, and return this `position` struct
+1. Create a `counters` structure to store the occupied ‘.’ spaces in the map
+2. Create a `ctrsmap` bundle to be passed to `hashtable_iterate`, storing the new counters and the server’s stored map
+3. Iterate through the gold and player hashtables, adding the positions of all uncollected gold and active players to the occupied `counters`
+4. Create another `counters` structure to store the valid, unoccupied positions
+5. Create a `twoctrs` structure to hold the occupied counters and the validPositions counters
+6. Iterate through the counters of all positions of ‘.’ in the map, adding any positions that are not in the occupied counters to the valid positions counters
+7. Iterate through the valid positions counters to get the number of nodes (# of valid positions) in the counters, numValidPos
+8. Select a random node by calling rand()%numValidPos
+9. Iterate through the valid positions counters until that specific node is reached, grabbing and storing its integer value (the key)
+10. Convert the integer value to an (x, y) position in the map, and return this `position` struct
 
 `goldFill`
-Calculate the integer position of the gold struct within the map by calling `map_calcPosition`
-Add this integer position to the occupied `counters` to indicate it’s space is occupied
+1. Calculate the integer position of the gold struct within the map by calling `map_calcPosition`
+2. Add this integer position to the occupied `counters` to indicate it’s space is occupied
 
 `playerFill`
-Calculate the integer position of the player struct within the map by calling `map_calcPosition`
-Add this integer position to the occupied `counters` to indicate it’s space is occupied
+1. Calculate the integer position of the player struct within the map by calling `map_calcPosition`
+2. Add this integer position to the occupied `counters` to indicate it’s space is occupied
 
 `onlyDots`
+
 If `counters_get` returns 0 for a call on the occupied `counters` and this key (this integer position), add the position to the valid position `counters`
 
 `keyCount`
+
 Increments the provided argument, nkeys, by 1 to indicate another node in the `counters`
 
 `validateParameters`
-Validate the number of arguments is between 2-3
-Validate the map file by checking if it is readable
-Validate the seed using sscanf, making sure it is solely an integer
-Return true if all parameters are valid
+1. Validate the number of arguments is between 2-3
+2. Validate the map file by checking if it is readable
+3. Validate the seed using sscanf, making sure it is solely an integer
+4. Return true if all parameters are valid
 
 
+### Map Module
 
-Map Module
 The file map.c contains all the code necessary for making, copying, and updating maps and converting between position and integer. Various functions (as detailed below) allow the server to create new maps and pass them back to clients with appropriate player and gold data. Player movement feasibility and gold placement are also encapsulated here.
 
-Pseudocode
-map_new():
-allocates new map and checks for validity
-loads map string, which is the content of the text file fp, into a buffer
-ftell() at SEEK_END to get length
-fread() from SEEK_SET to convert file text to string
-discards newlines to compress map into one-line string while saving width/height
-increments height integer by one for every newline encountered
-increments width by one for every other character
-keeps track of string length for null termination
-stores width divided by height as width and height as height in the map
-copies buffer into mapStr and sets map string accordingly
-returns map
+#### Pseudocode
+`map_new()`
+1. allocates new map and checks for validity
+2. loads map string, which is the content of the text file fp, into a buffer
+	* a. ftell() at SEEK_END to get length
+	* b. fread() from SEEK_SET to convert file text to string
+3. discards newlines to compress map into one-line string while saving width/height
+	* a. increments height integer by one for every newline encountered
+	* b. increments width by one for every other character
+	* c. keeps track of string length for null termination
+	* d. stores width divided by height as width and height as height in the map
+4. copies buffer into mapStr and sets map string accordingly
+5. returns map
 
-map_buildPlayerMap():
-creates output map and copies passed map into it via map_copy()
-use hashtable_iterate() and placeGold() to get goldData hashtable data into output map
-do the same with addPlayerITR() to get players hashtable data into output map
-make the current player’s identifier ‘@’
-get player position plyIndx from map_calcPosition and player->pos
-convert outMap->mapStr[plyIndx] to ‘@’
-assign the output map string to map_buildOutput
-return the output map
+`map_buildPlayerMap()`:
+1. creates output map and copies passed map into it via map_copy()
+2. use hashtable_iterate() and placeGold() to get goldData hashtable data into output map
+3. do the same with addPlayerITR() to get players hashtable data into output map
+4. make the current player’s identifier ‘@’
+	* a. get player position plyIndx from map_calcPosition and player->pos
+	* b. convert outMap->mapStr[plyIndx] to ‘@’
+5. assign the output map string to map_buildOutput
+6. return the output map
 
-placeGold():
-assign map struct outMap to arg and gold struct g to item
-get gold index gIndx from map_calcPosition()/g->pos for all uncollected gold
-convert outMap->mapStr[gIndx] to ‘*’ to represent unclaimed pile
+`placeGold()`:
+1. assign map struct outMap to arg and gold struct g to item
+2. get gold index gIndx from map_calcPosition()/g->pos for all uncollected gold
+3. convert outMap->mapStr[gIndx] to `'*'` to represent unclaimed pile
 
-addPlayerITR():
-assign map struct map to arg and player struct player to item
-get player position plyIndx from map_calcPosition()/player->pos for every active player
-convert map->mapStr[plyIndx] to the players identity character
+`addPlayerITR()`:
+1. assign map struct map to arg and player struct player to item
+2. get player position plyIndx from map_calcPosition()/player->pos for every active player
+3. convert map->mapStr[plyIndx] to the players identity character
 
-map_calcPosition():
+`map_calcPosition()`:
+
 see description below
 
-map_intToPos():
+`map_intToPos()`:
+
 see description below
 
-map_buildOutput():
-copies map string into newly-allocated string (of length strlen(map->mapStr) plus map height) newMapStr with strcpy()
-adds newline characters into newMapStr whenever i modulo map width is zero for every position in map->mapStr decremented from the end
-returns newMapStr
+`map_buildOutput()`:
+1. copies map string into newly-allocated string (of length strlen(map->mapStr) plus map height) newMapStr with strcpy()
+2. adds newline characters into newMapStr whenever i modulo map width is zero for every position in map->mapStr decremented from the end
+3. returns newMapStr
 
-map_copy():
-allocates new map struct newMap and map string newMapStr
-copies width/height data into newMap and map->mapStr into newMapStr
-returns newMap
+`map_copy()`:
+1. allocates new map struct newMap and map string newMapStr
+2. copies width/height data into newMap and map->mapStr into newMapStr
+3. returns newMap
 
-map_calculateVisibility():
+`map_calculateVisibility()`:
+
 see description below
 
-map_movePlayer():
-copies position struct from player struct
-checks for movement in positive or negative x or y directions with less than operators
-checks for proper diagonal movement (differences between both coordinate values when comparing new and player positions)
-if not equal movements in both directions (absolute values of differences equal), return original player position (failed movement)
-increment copied player position by difference until the differences are gone
-check that player can be in the new position; if not, decrement and exit the loop
-checks for vertical movement and increments until y difference is gone or hits a wall
-checks for horizontal movement and increments until x difference is gone or hits a wall
-translates copied data back into passed player struct’s position struct and returns
+`map_movePlayer()`:
+1. copies position struct from player struct
+2. checks for movement in positive or negative x or y directions with less than operators
+3. checks for proper diagonal movement (differences between both coordinate values when comparing new and player positions)
+	* a. if not equal movements in both directions (absolute values of differences equal), return original player position (failed movement)
+	* b. increment copied player position by difference until the differences are gone
+	* c. check that player can be in the new position; if not, decrement and exit the loop
+4. checks for vertical movement and increments until y difference is gone or hits a wall
+5. checks for horizontal movement and increments until x difference is gone or hits a wall
+6. translates copied data back into passed player struct’s position struct and returns
 
 canPlayerMoveTo():
-uses map_calcPosition to find index
-gets character from that index in the map string
-returns true for characters other than space, hyphen, pipe, and plus
-returns false by default
+1. uses map_calcPosition to find index
+2. gets character from that index in the map string
+3. returns true for characters other than space, hyphen, pipe, and plus
+4. returns false by default
 
 map_delete():
+
 see description below
 
-Description
+
+## Description
+
 The primary delineation in our implementation of the Nuggets game is between Server and Map. While Map is responsible for creating and advertising game data to players in the form of a graphical user interface, Server is responsible for syncing player behavior, responding to client requests from players, and mediating general gameplay. The two modules need to communicate when Server uses Map structs to keep track of gold and player positions.
 
-The server utilizes the following functions: 
+Apart from `hashtable` and `counters` modules, the server utilizes the following data structure to store data:
+
 ```
+typedef struct serverInfo {
+int *numPlayers;
+int *goldCt;
+const int maxPlayers;
+hashtable_t *playerInfo;
+hashtable_t *goldData;
+counters_t *dotsPos;
+map_t *map;
+addr_t specAddr;
+} serverInfo_t;
+```
+
+
+The server utilizes the following functions: 
+```c
 int server(char *argv[], int seed);
 void splitline(char *message, char *words[]);
 player_t *player_new(addr_t from, char letter, serverInfo_t *info);
@@ -250,6 +279,7 @@ void findPlayerITR(void *arg, const char *key, void *item);
 void buildGameOverString(void *arg, const char *key, void *item);
 void mapSend(void *arg, const char* key, void *item);
 void quitFunc(void *arg, const char *key, void *item);
+bool validateAction(char *keyPress, player_t *player, serverInfo_t *info);
 ```
 
 `server` initializes and stores all the data for the game and handles the looping of messages coming from clients. The server returns non-zero if an error occurs or zero otherwise. Argv[] is passed to provide the map file for reading and the seed provides a set random behavior
@@ -302,10 +332,12 @@ void quitFunc(void *arg, const char *key, void *item);
 
 `quitFunc` is an iterator function for use in `hashtable_iterate` which sends the QUIT GAME OVER message to each active player in the player hashtable.
 
+`validateAction` handles the keyPress from a given player to validate its movement. Returns true if the player moved, false for no movement.
+
 
 The map declares the following structs and utilizes the following functions:
 
-Structs (in map.h)
+#### Structs (in map.h)
 ```c
 typedef struct position {} position_t;
 typedef struct player {} player_t;
@@ -319,7 +351,7 @@ Gold keeps track of gold pile values and position along with collected/uncollect
 Map keeps track of the map-representing string and its width and height
 
 
-Functions
+#### Functions
 ```c
 map_t *map_new(FILE *fp)
 map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
@@ -335,44 +367,67 @@ bool canPlayerCanMoveTo(map_t *map, position_t *pos)
 void map_delete(map_t *map)
 ```
 
-map_new() loads map struct from passed text file and returns the map
-map_buildPlayerMap() adapts passed map to account for what the passed player should see and be able to do
-placeGold(): passed to hashtable_iterate to put gold in output map
-addPlayerITR(): passed to hashtable_iterate to put player characters in output map
-map_calcPosition() checks to make sure position is inside map and returns the product of position’s y-coordinate and map’s width plus one greater than position’s x-coordinate
-map_intToPos() allocates a position struct, decrements i by one, and returns the position with its x-coordinate as the modulus of i over width and its y-coordinate as the quotient of i over width
-map_buildOutput() builds an output map string, appropriate for text file use/display, from a map
-map_copy() yields an exact replica of the passed map, ready for alterations, with newly-allocated memory
-map_calculateVisibility() loops through every possible graph point on the passed map to decide whether the passed player should be able to see it given walls and corners
-map_movePlayer() updates player position in response to client input (nextPos) if valid
-canPlayerMoveTo() checks for allowed player movement (i.e. anywhere but rocks and walls)
-map_delete() frees map and map string to avoid memory shenanigans
-Data Structures
+`map_new()` loads map struct from passed text file and returns the map
+
+`map_buildPlayerMap()` adapts passed map to account for what the passed player should see and be able to do
+
+`placeGold()`: passed to hashtable_iterate to put gold in output map
+
+`addPlayerITR()`: passed to hashtable_iterate to put player characters in output map
+
+`map_calcPosition()` checks to make sure position is inside map and returns the product of position’s y-coordinate and map’s width plus one greater than position’s x-coordinate
+
+`map_intToPos()` allocates a position struct, decrements i by one, and returns the position with its x-coordinate as the modulus of i over width and its y-coordinate as the quotient of i over width
+
+`map_buildOutput()` builds an output map string, appropriate for text file use/display, from a map
+
+`map_copy()` yields an exact replica of the passed map, ready for alterations, with newly-allocated memory
+
+`map_calculateVisibility()` loops through every possible graph point on the passed map to decide whether the passed player should be able to see it given walls and corners
+
+`map_movePlayer()` updates player position in response to client input (nextPos) if valid
+
+`canPlayerMoveTo()` checks for allowed player movement (i.e. anywhere but rocks and walls)
+
+`map_delete()` frees map and map string to avoid memory shenanigans
+
+
+## Data Structures
+
 The hashtable struct from lab 3 is vital to this operation, since the (key,item) pairing system allows the server to keep track of players and gold data efficiently and the iterative properties allow for rapid exploration of every value in the table. The counterset is also helpful for keeping track of integer values associated with various other data like the dots representing gold piles. Internally, the map and player structs are necessary to encapsulate position, gold, activity, and display data for passing among functions and modules (and server and clients). Smaller structs, like gold and position, are useful to further abstract and bundle up relevant information.
 
-Hashtable of (key = player name) (item = Player data struct)
-Hashtable of (key = pile number) (item = Gold data struct)
-Multiple Counters of (key = integer position in map)
-Position data struct
-int x
-int y
-Player data struct
-Position struct
-int goldCt
-char letter
-bool isActive
-char *visibility
-Gold data struct
-Position struct
-int value
-bool isCollected
-Map data struct
-char *mapStr
-int height
-int width
-Security & Privacy properties
+* Hashtable of (key = player name) (item = Player data struct)
+* Hashtable of (key = pile number) (item = Gold data struct)
+* Multiple Counters of (key = integer position in map)
+* Position data struct
+	* `int x`
+	* `int y`
+* Player data struct
+	* Position struct
+	* `int goldCt`
+	* `char letter`
+	* `bool isActive`
+	* `char *visibility`
+* Gold data struct
+	* Position struct
+	* `int value`
+	* `bool isCollected`
+* Map data struct
+	* `char *mapStr`
+	* `int height`
+	* `int width`
+
+
+## Security & Privacy properties
+
 Buffers and extensive null-checking are our  best current efforts to stymie potential malicious use. There’s not much to do privacy-wise at this point because clients are only internal.
-Error Handling & Recovery
+
+
+## Error Handling & Recovery
+
 Errors in the server will trigger printed messages indicating what went awry and graceful server closeouts. Memory leaks should be impossible given the exit procedures implemented.
-Resource Management & Persistent Storage
+
+
+## Resource Management & Persistent Storage
+
 `malloc` and `free` are by far the most-used storage management methods. Valgrind will continue to be used in the future to detect leaks and debug allocation goofs.

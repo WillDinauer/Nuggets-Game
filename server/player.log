@@ -1,0 +1,251 @@
+START OF LOG
+player on port 52279
+interactive player mode; name 'jim'
+GRID message received: GRID 21 79
+displayStart: Success
+wRows = 24
+wCols = 105
+OK message received: OK A
+GOLD message received: GOLD 0 0 250
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 11 11 239
+DISPLAY message received
+GOLD message received: GOLD 22 33 217
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 8 41 209
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 7 48 202
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 19 67 183
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 18 85 165
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 13 98 152
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 1 99 151
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 9 108 142
+DISPLAY message received
+GOLD message received: GOLD 17 125 125
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 10 135 115
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 7 142 108
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 3 145 105
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 20 165 85
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 24 189 61
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 4 193 57
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 4 197 53
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 12 209 41
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 12 221 29
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 2 223 27
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 11 234 16
+DISPLAY message received
+GOLD message received: GOLD 16 250 0
+QUIT message received: QUIT GAME OVER
+A	250	jim
+
+END OF LOG

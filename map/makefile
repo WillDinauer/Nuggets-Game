@@ -10,7 +10,7 @@ OBJS = mapTest.o map.o
 LIBS =
 LLIBS = $S/support.a
 
-.PHONY: all clean test
+.PHONY: all clean t
 
 all: mapTest
 
@@ -20,10 +20,11 @@ $(PROG): $(OBJS)
 
 # object files depend on include files
 mapTest.o: map.h $S/hashtable.h
-map.o: map.h $S/hashtable.h
+map.o: map.h $S/hashtable.h $S/message.h
 
 
-test: $(PROG)
+t: $(PROG)
+	clear
 	./$(PROG)
 
 

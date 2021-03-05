@@ -1,0 +1,51 @@
+START OF LOG
+player on port 43230
+spectate
+GRID message received: GRID 5 14
+displayStart: Success
+wRows = 24
+wCols = 105
+GOLD message received: GOLD 0 0 250
+DISPLAY message received
+GOLD message received: GOLD 0 0 236
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 225
+DISPLAY message received
+GOLD message received: GOLD 0 0 203
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 186
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 168
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 151
+DISPLAY message received
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 128
+DISPLAY message received
+GOLD message received: GOLD 0 0 121
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 112
+DISPLAY message received
+GOLD message received: GOLD 0 0 108
+DISPLAY message received
+GOLD message received: GOLD 0 0 89
+DISPLAY message received
+GOLD message received: GOLD 0 0 74
+DISPLAY message received
+GOLD message received: GOLD 0 0 54
+DISPLAY message received
+GOLD message received: GOLD 0 0 40
+DISPLAY message received
+GOLD message received: GOLD 0 0 28
+DISPLAY message received
+DISPLAY message received
+GOLD message received: GOLD 0 0 3
+DISPLAY message received
+GOLD message received: GOLD 0 0 0
+Unknown message received: 'Ð[ðLV'

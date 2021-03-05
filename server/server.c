@@ -9,226 +9,573 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <string.h>
+#include <unistd.h>
+#include "map.h"
 #include "message.h"
 #include "log.h"
+#include "file.h"
 #include "hashtable.h"
 #include "set.h"
 #include "counters.h"
+#include "serverUtils.h"
 
-typedef struct serverInfo {
-    int *numPlayers;
-    const int maxPlayers;
-    hashtable_t *playerInfo;
-    counters_t *dotsPos;
-    char *map;
-    int NR;
-    int NC;
+
+typedef struct countersMap {
+    counters_t *ctrs;
+    map_t *map;
+} ctrsmap_t;
+
+typedef struct twoctrs {
+    counters_t *ctrs1;
+    counters_t *ctrs2;
+} twoctrs_t;
+
+typedef struct twoints {
+    int *x;
+    int *y;
+} twoints_t;
+
+struct findPlayer {
+	addr_t addr;
+	player_t *result;
+};
+
+typedef struct goldBundle {
+    player_t *player;
     addr_t specAddr;
-} serverInfo_t;
+    int *goldCt;
+} gb_t;
 
-typedef struct player {
-    addr_t addr;
-    int x;
-    int y;
-    int gold;
-    char letter;
-    bool isActive;
-    char *visibility;
-} player_t;
-
-typedef struct pos {
-    int x;
-    int y;
-} pos_t;
-
-
+/**************** Functions ****************/
 int server(char *argv[], int seed);
-static bool handleMessage(void *arg, const addr_t from, const char *message);
-void sendMaps(serverInfo_t *info);
-bool validateAction(char *keyPress, addr_t from, serverInfo_t *info);
 void splitline(char *message, char *words[]);
 player_t *player_new(addr_t from, char letter, serverInfo_t *info);
-pos_t *newPlayerPos(serverInfo_t *info);
 counters_t *getDotsPos(char *map);
 bool validateParameters(int argc, char *argv[], int *seed);
-void sendGrid(const addr_t from, int NR, int NC);
+bool checkFile(char *fname, char *openParam);
+void findPos(void *arg, int key, int count);
+void goldFill(void *arg, const char *key, void *item);
+void playerFill(void *arg, const char *key, void *item);
+void checkGoldCollect(void *arg, const char *key, void *item);
+void onlyDots(void *arg, int key, int count);
+void keyCount(void *arg, int key, int count);
+void playerDelete(void *item);
+void goldDelete(void *gold);
+static bool handleInput(void *arg);
+hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos);
+position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo);
+gold_t *gold_new();
+
+
+/**************** Server Communication Functions ****************/
+void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter);
 void sendSpectatorView(serverInfo_t *info);
+static bool handleMessage(void *arg, const addr_t from, const char *message);
+void sendMaps(serverInfo_t *info);
+void sendQuit(serverInfo_t *info);
+void sendGoldMessage(addr_t from, int collected, int purse, int remain);
+
+/**************** Iterators ****************/
+void findPlayerITR(void *arg, const char *key, void *item);
+void buildGameOverString(void *arg, const char *key, void *item);
 void mapSend(void *arg, const char* key, void *item);
+void quitFunc(void *arg, const char *key, void *item);
 
 int main(int argc, char *argv[])
 {
-    int seed;
+    int seed = -1;
     if (!validateParameters(argc, argv, &seed)) {
         return 1;
     }
 
-    return server(argv, seed);
+	return server(argv, seed);
 }
 
 int server(char *argv[], int seed)
 {
+    // initialize variables to be stored as the server information
     //static const int MaxNameLength = 50;   // max number of chars in playerName
     static const int maxPlayers = 26;      // maximum number of players
-    //static const int GoldTotal = 250;      // amount of gold in the game
-    //static const int GoldMinNumPiles = 10; // minimum number of gold piles
-    //static const int GoldMaxNumPiles = 30; // maximum number of gold piles
+  
+    int goldCt = 0;
     int numPlayers = 0;
     hashtable_t *playerInfo = hashtable_new(maxPlayers);
-    int NC = 0;
-    int NR = 0;
-    char *map = "    ";
     addr_t specAddr = message_noAddr();
-    //char *map = map_new(argv[1]);
+
+    // read the map file to create the map
+    FILE *fp;
+    int len = strlen(argv[1]);
+    char *mapfile = calloc(len + 1, sizeof(char));
+    strcpy(mapfile, argv[1]);
+    fp = fopen(mapfile, "r");
+    map_t *map = map_new(fp);
+    free(mapfile);
     if (map == NULL) {
         fprintf(stderr, "unable to load map");
         return 2;
     }
+    // create the counters which holds the integer positions of '.' in the map
+    counters_t *dotsPos = getDotsPos(map->mapStr);
+    // generate the gold randomly (or based on the seed) and store in a hashtable
+    hashtable_t *goldData = generateGold(map, seed, &goldCt, dotsPos);
 
-    counters_t *dotsPos = getDotsPos(map);
-    serverInfo_t info = {&numPlayers, maxPlayers, playerInfo, dotsPos, map, NR, NC, specAddr};
+    // construct the serverInfo object which holds all the relevant data for the server
+    serverInfo_t info = {&numPlayers, &goldCt, maxPlayers, playerInfo, goldData, dotsPos, map, specAddr};
     
+    // start logging
     log_init(stderr);
+    // initialize messages; listen on a port
     int serverPort = message_init(stderr);
     if (serverPort == 0) {
         return 3;
     }
     printf("waiting for connections on port %d\n", serverPort);
 
-    message_loop(&info, 0, NULL, NULL, handleMessage);
+    // continue looping, listening for messages until the end of the game is triggered
+    message_loop(&info, 0, NULL, handleInput, handleMessage);
+
+    // clean up
     message_done();
     log_done();
-    //TODO: add hashtable delete
+    hashtable_delete(playerInfo, playerDelete);
+    hashtable_delete(goldData, goldDelete);
     counters_delete(dotsPos);
     return 0;
 }
 
-static bool handleMessage(void *arg, const addr_t from, const char *message)
+static bool handleInput(void *arg)
 {
-    serverInfo_t *info = (serverInfo_t *)arg;
-    if (info == NULL) {
-        log_v("handleMessage called with arg=NULL");
+    char *line = freadlinep(stdin);
+    if (line == NULL || strcmp(line, "Q") == 0) {
+        free(line);
         return true;
     }
-    hashtable_t *playerInfo = info->playerInfo;
-    int *numPlayers = info->numPlayers;
-    const int maxPlayers = info->maxPlayers;
-
-    char *line = calloc(strlen(message) + 1, sizeof(char));
-    strcpy(line, message);
-
-    char *words[2];
-    splitline(line, words);
-    if (strcmp(words[0], "PLAY") == 0) {
-        if (*numPlayers == maxPlayers) {
-            message_send(from, "QUIT Game is full: no more players can join");
-        } else {
-            //TODO: Add check for blank player name
-            char letter = 'A' + *numPlayers;
-            player_t *player = player_new(from, letter, info);
-            if (hashtable_insert(playerInfo, words[1], player)) {
-                (*numPlayers)++;
-                sendGrid(from, info->NR, info->NC);
-                sendMaps(info);
-            }
-        }
-    } else if (strcmp(words[0], "KEY") == 0) {
-        if (validateAction(words[1], from, info)) {
-            sendMaps(info);
-        }
-    } else if (strcmp(words[0], "SPECTATE") == 0) {
-        addr_t specAddr = info->specAddr;
-        if (message_isAddr(specAddr)) {
-            message_send(specAddr, "QUIT You have been replaced by a new spectator.");
-        }
-        info->specAddr = from;
-        sendSpectatorView(info);
+    if (line != NULL) {
+        free(line);
     }
-    free(line);
     return false;
 }
 
-void sendGrid(const addr_t from, int NR, int NC)
+void playerDelete(void *item) 
 {
-    int NRlen = snprintf(NULL, 0, "%d", NR);
+    player_t *player = item;
+    if (player != NULL) {
+        if (player->pos != NULL) {
+            free(player->pos);
+        }
+        free(player);
+    }
+}
+
+void goldDelete(void *item) 
+{
+    gold_t *gold = item;
+    if (gold != NULL) {
+        if (gold->pos != NULL) {
+            free(gold->pos);
+        }
+        free(gold);
+    }
+}
+
+hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos)
+{
+    static const int GoldTotal = 250;      // amount of gold in the game
+    static const int GoldMinNumPiles = 10; // minimum number of gold piles
+    static const int GoldMaxNumPiles = 30; // maximum number of gold piles
+
+    // randomize either based on the seed or the pid
+    if (seed == -1) {
+        srand(getpid());
+    } else {
+        srand(seed);
+    }
+
+    *goldCt = GoldTotal;            // tracks the uncollected gold in the server
+    int goldToPlace = GoldTotal;    // amount of gold to place into the map
+    int numPiles = 0;               // total number of gold piles; must ultimately be between goldMin to goldMax piles
+    hashtable_t *goldInfo = hashtable_new(GoldMinNumPiles);     // initialize the goldInfo hashtable to store gold data
+    
+    while (goldToPlace != 0) {      // loop until all gold placed
+        gold_t *gold = gold_new();  // create the new pile of gold to be placed
+
+        // generate gold for a pile to ensure min num piles, and a pile has at least 1 gold
+        int value = (rand() % GoldTotal/GoldMinNumPiles) + 1; 
+        // generate a random position for the gold (must be an unoccupied '.' character)
+        position_t *pos = getRandomPos(map, dotsPos, goldInfo, NULL);
+        //TODO: HANDLE NULL POS: THERE ARE NO MORE VALID POSITIONS FOR GOLD (might have to make a nextPos)
+
+        // if the random value is less than the remaining gold OR we have reached the max number of piles...
+        if (goldToPlace-value < 0 || numPiles+1 == GoldMaxNumPiles) {
+            value = goldToPlace;        // set the value to the remaining gold to place
+            goldToPlace = 0;            // no more gold left to place!
+        } else {
+            goldToPlace -= value;       // otherwise, subtract the value from the remaining gold to place
+        }
+
+        gold->value = value;
+        gold->pos = pos;
+
+        // convert the pile number into a string
+        int npLen = snprintf(NULL, 0, "%d", numPiles);
+        char *numPileStr = malloc(npLen + 1);
+        snprintf(numPileStr, npLen + 1, "%d", numPiles);
+
+        // insert the gold into the hashtable
+        hashtable_insert(goldInfo, numPileStr, gold);
+
+        free(numPileStr);
+        numPiles++;     // increment the number of piles
+
+    }
+    return goldInfo;    // return the hashtable with the newly generated gold data
+}
+
+static bool handleMessage(void *arg, const addr_t from, const char *message)
+{
+	serverInfo_t *info = (serverInfo_t *)arg;
+	if (info == NULL) {     // defensive programming
+		log_v("handleMessage called with arg=NULL");
+		return true;
+	}
+	hashtable_t *playerInfo = info->playerInfo;
+	int *numPlayers = info->numPlayers;
+	const int maxPlayers = info->maxPlayers;
+
+    // create memory to pass the message to the splitline function
+	char *line = calloc(strlen(message) + 1, sizeof(char));
+	strcpy(line, message);
+
+    // split the message into an array of two words (a message from the client is always 1-2 words)
+	char *words[2];
+	splitline(line, words);
+
+    // call the appropriate function relevant to the first word provided by the client
+    // new player
+	if (strcmp(words[0], "PLAY") == 0) {
+        // validate the number of players
+		if (*numPlayers == maxPlayers) {
+			message_send(from, "QUIT Game is full: no more players can join");
+		} else {
+			//TODO: Add check for blank player name
+
+            // create a new player
+			char letter = 'A' + *numPlayers;                // set the letter based on the number of players, starting at 'A'
+			player_t *newPlayer = player_new(from, letter, info);
+			if (hashtable_insert(playerInfo, words[1], newPlayer)) { // check for duplicate player name
+				(*numPlayers)++;
+                // send the necessary initial info to the new player
+				sendInitialInfo(from, info, letter);
+                // send the map with the added new player to all clients
+				sendMaps(info);
+			}
+		}
+    // key press from player or spectator
+	} else if (strcmp(words[0], "KEY") == 0) {
+        // Finding player from address
+	    struct findPlayer *f = malloc(sizeof(struct findPlayer));
+	    f->addr = from;
+	    hashtable_iterate(info->playerInfo, f, findPlayerITR);
+	    // Player that sent command
+	    player_t *fromPlayer = f->result;
+	    free(f);
+
+        // handle quit
+        if (words[1][0] == 'Q') {
+            if (message_eqAddr(from, info->specAddr)) { // quit message is from the spectator
+                // set the specAddr to be noAddr
+                info->specAddr = message_noAddr();
+                // send a quit message to the spectator
+                message_send(from, "QUIT Thanks for watching!");
+            } else {
+                //TODO: if there are no active players, end the game; shutdown the server
+                
+                // the player is no longer active; they should not be displayed on the map
+                fromPlayer->isActive = false;
+                // send a quit message to the player
+                message_send(from, "QUIT Thanks for playing!");
+                // send the updated maps to all clients
+                sendMaps(info);
+            }
+        } else {
+            if (validateAction(words[1], fromPlayer, info)) {   // validate the input action of the player
+			    hashtable_t *goldData = info->goldData;
+
+                // check if the player collected any gold
+                gb_t goldBundle = {fromPlayer, info->specAddr, info->goldCt};
+                hashtable_iterate(goldData, &goldBundle, checkGoldCollect);
+
+                // if the gold remaining in the game has reached 0, send the game over screen to all clients
+                if(*info->goldCt == 0) {
+                    sendQuit(info);
+                    return true;
+                } else {
+                    // otherwise, send the updated maps as usual
+                    sendMaps(info);
+                }
+            }
+		}
+    // new spectator
+	} else if (strcmp(words[0], "SPECTATE") == 0) {
+		addr_t specAddr = info->specAddr;
+
+        // check for an existing spectator
+		if (message_isAddr(specAddr)) {
+			message_send(specAddr, "QUIT You have been replaced by a new spectator.");
+		}
+
+        // update the spectator information
+		info->specAddr = from;
+        // send the new spectator the initial info they need
+		sendInitialInfo(from, info, 's');
+        // send the spectator the map
+		sendSpectatorView(info);
+	}
+
+	free(line);
+	return false;
+}
+
+void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
+{
+    int NR = info->map->height;     // map height
+    int NC = info->map->width;      // map width
+
+    // get the length of the integers (if they were a string)
+    int NRlen = snprintf(NULL, 0, "%d", NR); 
     int NClen = snprintf(NULL, 0, "%d", NC);
+
+    // create a string for each integer
     char *NRstr = malloc(NRlen + 1);
+    if (NRstr == NULL) { // out of memory
+        return;
+    }
     char *NCstr = malloc(NClen + 1);
+    if (NCstr == NULL) { // out of memory
+        free(NRstr);
+        return;
+    }
+    // write the integers to their corresponding string
     snprintf(NRstr, NRlen + 1, "%d", NR);
     snprintf(NCstr, NClen + 1, "%d", NC);
 
+    // send the "GRID NR NC" message to the client
     char *message = malloc(NRlen + NClen + 7);
-    strcpy(message, "GRID ");
-    strcat(message, NRstr);
-    strcat(message, " ");
-    strcat(message, NCstr);
-    message_send(from, message);
+    if (message != NULL) {
+        // build the message
+        strcpy(message, "GRID ");
+        strcat(message, NRstr);
+        strcat(message, " ");
+        strcat(message, NCstr);
 
+        // send the message
+        message_send(from, message);
+        free(message);
+    }
     free(NRstr);
     free(NCstr);
-    free(message);
+
+    if (letter != 's') {    // indicates whether the client is a spectator or a player
+    // send the "OK L" message to the player
+        char *letterMessage = malloc(5);
+        if (letterMessage != NULL) {
+            strcpy(letterMessage, "OK ");
+            
+            // add the player's corresponding letter
+            letterMessage[3] = letter;
+            letterMessage[4] = '\0';
+
+            // send the message
+            message_send(from, letterMessage);
+            free(letterMessage);
+        }
+    }
+
+    // send the initial gold message
+    sendGoldMessage(from, 0, 0, *info->goldCt);
+}
+
+void sendGoldMessage(addr_t address, int collected, int purse, int remain)
+{
+    // length of the integers if they were strings
+    int clen = snprintf(NULL, 0, "%d", collected);
+    int plen = snprintf(NULL, 0, "%d", purse);
+    int rlen = snprintf(NULL, 0, "%d", remain);
+    // allocate memory for the string form of the integers
+    char *cstr = malloc(clen + 1);
+    if (cstr == NULL) { // out of memory
+        return;
+    }
+    char *pstr = malloc(plen + 1);
+    if (pstr == NULL) { // out of memory
+        free(cstr);
+        return;
+    }
+    char *rstr = malloc(rlen + 1);
+    if (rstr == NULL) { // out of memory
+        free(cstr);
+        free(pstr);
+        return;
+    }
+    // write the integers to their corresponding string
+    snprintf(cstr, clen + 1, "%d", collected);
+    snprintf(pstr, plen + 1, "%d", purse);
+    snprintf(rstr, rlen + 1, "%d", remain);
+
+    // send the "GOLD n p r" message to the client
+    char *message = malloc(clen + plen + rlen + 8); 
+    if (message != NULL) {
+        // build the message
+        strcpy(message, "GOLD ");
+        strcat(message, cstr);
+        strcat(message, " ");
+        strcat(message, pstr);
+        strcat(message, " ");
+        strcat(message, rstr);
+
+        // send the message
+        message_send(address, message);
+        free(message);
+    }
+    free(cstr);
+    free(rstr);
+    free(pstr);
 }
 
 void sendMaps(serverInfo_t *info)
 {
+	hashtable_t *playerInfo = info->playerInfo;
+
+    // for each player, construct their map and send it to their corresponding address
+	hashtable_iterate(playerInfo, info, mapSend);
+
+    // if there is an active spectator, send them the spectator view
+	if (message_isAddr(info->specAddr)) {
+		sendSpectatorView(info);
+	}
+}
+
+void sendQuit(serverInfo_t *info)
+{
+    //TODO: BUILD THE GAME OVER STRING TO SEND TO ALL ACTIVE PLAYERS
+    char *result = malloc(16);
+    strcpy(result, "QUIT GAME OVER\n");
+
     hashtable_t *playerInfo = info->playerInfo;
-    hashtable_iterate(playerInfo, info, mapSend);
+    hashtable_iterate(playerInfo, result, buildGameOverString);
+    
+    hashtable_iterate(playerInfo, result, quitFunc);
 
     if (message_isAddr(info->specAddr)) {
-        sendSpectatorView(info);
+        message_send(info->specAddr, result);
     }
+}
+
+void buildGameOverString(void *arg, const char *key, void *item)
+{
+    char *result = arg;
+    player_t *player = item;
+
+    int nameLen = strlen(key);
+    int goldCt = player->gold;
+
+    int goldLen = snprintf(NULL, 0, "%d", goldCt);
+    char *goldStr = malloc(goldLen + 1);
+    snprintf(goldStr, goldLen + 1, "%d", goldCt);
+
+    char *line = calloc(goldLen + nameLen + 4, sizeof(char));
+    line[0] = player->letter;
+    strcat(line, "\t");
+    strcat(line, goldStr);
+    strcat(line, "\t");
+    strcat(line, key);
+
+    int resultLen = strlen(result);
+    result = realloc(result, (resultLen + goldLen + nameLen + 4) * sizeof(char));
+    strcat(result, line);
+
+    free(line);
+}
+
+void quitFunc(void *arg, const char *key, void *item)
+{
+    // Sending a player a quit message
+    char *result = arg;
+    player_t *player = item;
+    message_send(player->addr, result);
 }
 
 void sendSpectatorView(serverInfo_t *info)
 {
-    addr_t specAddr = info->specAddr;
-    //TODO: Construct the spectator's map
+	addr_t specAddr = info->specAddr;
 
-    char *specMap = "spectator map";
-    int len = strlen(specMap);
+    // grab the default, unaltered map
+    map_t *baseMap = info->map;
+    // build the player map with a NULL player, indicating the spectator view
+    map_t *specMap = map_buildPlayerMap(baseMap, NULL, info->goldData, info->playerInfo);
+    if (specMap == NULL) {  // out of memory
+        return;
+    }
 
-    char *message = malloc(len + 9);
-    strcpy(message, "DISPLAY\n");
-    strcat(message, specMap);
-    message_send(specAddr, message);
+    int len = strlen(specMap->mapStr);
+	char *message = malloc(len + 9);
+    if (message != NULL) {
+        // build the message
+	    strcpy(message, "DISPLAY\n");
+	    strcat(message, specMap->mapStr);
 
-    free(message);
+        // send the map
+        message_send(specAddr, message);
+	    free(message);
+    }
+	map_delete(specMap);
 }
 
 void mapSend(void *arg, const char* key, void *item)
 {
-    //serverInfo_t *info = (serverInfo_t *)arg;
+    serverInfo_t *info = (serverInfo_t *)arg;
     player_t *player = (player_t *)item;
-    //TODO: Construct the map for the individual user
+    hashtable_t *playerInfo = info->playerInfo;
+    hashtable_t *goldData = info->goldData;
     
-    char* newMap = "player map";
-    int len = strlen(newMap);
+    // grab the base, unaltered map
+    map_t *baseMap = info->map;
+    // build the map specific to this player
+    map_t *playerMap = map_buildPlayerMap(baseMap, player, goldData, playerInfo); 
+    if (playerMap == NULL) {    // out of memory
+        return;
+    }
 
+    int len = strlen(playerMap->mapStr);
     char *message = malloc(len + 9);
-    strcpy(message, "DISPLAY\n");
-    strcat(message, newMap);
-    addr_t addr = player->addr;
-    message_send(addr, message);
+    if (message != NULL) {
+        // build the message
+        strcpy(message, "DISPLAY\n");
+        strcat(message, playerMap->mapStr);
 
-    free(message);
+        // send the map
+        addr_t addr = player->addr;
+        message_send(addr, message);
+        free(message);
+    }
+    map_delete(playerMap);
 }
 
-bool validateAction(char *keyPress, addr_t from, serverInfo_t *info)
-{
-    //TODO: Validate action based on the map, update playerinfo accordingly
-    return true;
-}
 
 void splitline(char *message, char *words[])
 {
-    words[0] = &message[0];
-    int pos = 0;
-    while (!isspace(message[pos]) && message[pos] != '\0') {
-        pos++;
-    }
-    if (message[pos] != '\0') {
-        message[pos] = '\0';
-        words[1] = &message[pos+1];
-    }
+    // the first pointer points to the first character in the message
+	words[0] = &message[0];
+	int pos = 0;
+    // increment the position until we reach a space or the end of the message
+	while (!isspace(message[pos]) && message[pos] != '\0') {
+		pos++;
+	}
+    // check for a second word
+	if (message[pos] != '\0') {
+		message[pos] = '\0';        // add a '\0' to split the message into two words
+		words[1] = &message[pos+1]; // store a pointer to the second word
+	}
 }
 
 player_t *player_new(addr_t from, char letter, serverInfo_t *info)
@@ -237,60 +584,276 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     if (player == NULL) { // out of memory
         return NULL;
     } 
+    // initialize player info
     player->addr = from;
     player->letter = letter;
     player->isActive = true;
     player->gold = 0;
     player->visibility = "";    //TODO: Visibility
 
-    pos_t *pos = newPlayerPos(info);
+    // get a random unoccupied position in the map (where a '.' character is)
+    player->pos = getRandomPos(info->map, info->dotsPos, info->goldData, info->playerInfo);
 
-    player->x = pos->x;
-    player->y = pos->y;
+    //TODO: HANDLE POS == NULL (player must quit)
 
     return player;
 }
 
-pos_t *newPlayerPos(serverInfo_t *info)
+position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo)
 {
-    int x = 0;
-    int y = 0;
-    pos_t *pos = malloc(sizeof(pos_t));
-    //TODO: check existing player positions and gold positions and choose from remaining empty "." spaces to generate random x/y
-    pos->x = x;
-    pos->y = y;
-    return pos;
+    counters_t *filledPos = counters_new();     // counters to store locations of occupied '.' spaces in the map
+    if (filledPos == NULL) { // out of memory
+        return NULL;
+    }
+
+    // bundle to be based to the hashtable_iterate functions, adding occupied spaces to filledPos
+    ctrsmap_t bundle = {filledPos, map};
+
+    // iterate over gold, adding all occupied gold positions to filledPos
+    hashtable_iterate(goldInfo, &bundle, goldFill);
+    if (playerInfo != NULL) {
+        // iterate over players, adding all occupied player positions to filledPos
+        hashtable_iterate(playerInfo, &bundle, playerFill);
+    }
+
+    counters_t *validPositions = counters_new();    // counters to store unoccupied '.' positions
+    if (validPositions == NULL) { // out of memory
+        counters_delete(filledPos);
+        return NULL;
+    }
+    
+    // for all '.' positions, check if that position is occupied (by gold or a player). If not, add it to validPositions
+    twoctrs_t ctrs = {filledPos, validPositions};
+    counters_iterate(dotsPos, &ctrs, onlyDots);
+
+    // count the number of valid positions
+    int numValidPos = 0;
+    counters_iterate(validPositions, &numValidPos, keyCount);
+
+    // there must be at least one valid position to return
+    if (numValidPos != 0) {
+        // select a random node in the counters
+        int val = rand() % numValidPos;
+        int finalPos = 0;
+
+        // iterate through the counters until that node is reached; return its position
+        twoints_t t = {&val, &finalPos};
+        counters_iterate(validPositions, &t, findPos);
+
+        // convert the integer value of the position to an actual (x, y) position in the map
+        position_t *result = map_intToPos(map, finalPos);
+
+        counters_delete(filledPos);
+        counters_delete(validPositions);
+        return result;
+    } else {
+        counters_delete(filledPos);
+        counters_delete(validPositions);
+        return NULL;
+    }
+}
+
+void findPos(void *arg, int key, int count)
+{
+    twoints_t *t = arg;
+    int *val = t->x;
+    int *finalPos = t->y;
+
+    // if we have not stored position information yet..
+    if (*val != -1) {
+        // if we are at our desired position...
+        if (*val == *finalPos) {
+            // store the integer value of the position in the map
+            *finalPos = key;
+            *val = -1;  // stop searching
+        } else {
+            // otherwise, increment the current position
+            (*finalPos)++;
+        }
+    }
+}
+
+void goldFill(void *arg, const char *key, void *item)
+{
+    ctrsmap_t *bundle = arg;
+    counters_t *filled = bundle->ctrs;
+    map_t *map = bundle->map;
+    gold_t *gold = item;
+    position_t *pos = gold->pos;
+
+    // only consider uncollected gold as occupying space
+    if (!gold->isCollected) {
+        // calculate the integer position of the gold within the map
+        int val = map_calcPosition(map, pos);
+
+        // add this integer position to the filled counters
+        counters_add(filled, val);
+    }
+}
+
+void playerFill(void *arg, const char *key, void *item)
+{
+    ctrsmap_t *bundle = arg;
+    counters_t *filled = bundle->ctrs;
+    map_t *map = bundle->map;
+    player_t *player = item;
+    position_t *pos = player->pos;
+
+    // only consider a space occupied if the player is active
+    if (player->isActive) {
+
+        // get the integer position of their (x,y) position in the map
+        int val = map_calcPosition(map, pos);
+
+        // store the integer positon in the filled counters
+        counters_add(filled, val);
+    }
+}
+
+void onlyDots(void *arg, int key, int count)
+{
+    twoctrs_t *ctrs = arg;
+    counters_t *filled = ctrs->ctrs1;
+    counters_t *validPos = ctrs->ctrs2;
+
+    // if the integer position is not in the filled counters, it is unoccupied
+    if (counters_get(filled, key) == 0) {
+        // thus, add it to the counters of valid positions
+        counters_add(validPos, key);
+    }
+}
+
+/*
+ * simple function to count the number of keys in a `counters` module
+ */
+void keyCount(void *arg, int key, int count)
+{
+    int *nkeys = arg;
+    if (nkeys != NULL && key >= 0 && count >=0) {
+        (*nkeys)++;
+    }
+}
+
+/*
+ * function to check if a player has collected gold
+ */
+void checkGoldCollect(void *arg, const char *key, void *item)
+{
+    gb_t *goldBundle = arg;
+    player_t *player = goldBundle->player;
+    addr_t specAddr = goldBundle->specAddr;
+    int *goldCt = goldBundle->goldCt;
+    gold_t *gold = item;
+
+    // if the player's position and an uncollected gold position match...
+    if (!gold->isCollected && player->pos->x == gold->pos->x && player->pos->y == gold->pos->y) {
+        // update the gold to be collected
+        gold->isCollected = true;
+
+        int value = gold->value;
+        int collected = player->gold;
+        // add the value of the collected gold to the player's existing purse
+        player->gold = collected + value;
+
+        // decrement to the total remaining gold in the game
+        (*goldCt) -= value;
+
+        // send the gold message to the player
+        sendGoldMessage(player->addr, value, player->gold, *goldCt);
+        //TODO: Send updated gold messages to all other existing players...
+        
+        // send the gold message to the spectator (if there is one)
+        if (message_isAddr(specAddr)) {
+            sendGoldMessage(specAddr, 0, 0, *goldCt);
+        }
+    }
+}
+
+
+gold_t *gold_new()
+{
+    gold_t *gold = malloc(sizeof(gold_t));
+    if (gold == NULL) { // out of memory
+        return NULL;
+    }
+    // initialize gold values
+    gold->value = 0;
+    gold->isCollected = false;
+    gold->pos = NULL;
+
+    return gold;
 }
 
 counters_t *getDotsPos(char *map)
 {
-    counters_t *dotsPos = counters_new();
-    int pos;
-    int len = strlen(map);
-    for (pos = 0; pos < len; pos++) {
-        if (map[pos] == '.') {
-            counters_add(dotsPos, pos);
-        }
+	counters_t *dotsPos = counters_new();   // counters to return
+    if (dotsPos == NULL) {  // out of memory
+        return NULL;
     }
-    return dotsPos;
+	int pos;
+	int len = strlen(map);
+
+    // iterate through the entire map, adding positions holding a '.'
+	for (pos = 0; pos < len; pos++) {
+		if (map[pos] == '.') {
+			counters_add(dotsPos, pos);
+		}
+	}
+	return dotsPos;
 }
 
 bool validateParameters(int argc, char *argv[], int *seed)
 {
-    // validate number of arguments
-    if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: ./server map.txt [seed]\n");
-        return false;
-    }
-    
-    // validate seed, if provided
-    if (argc == 3) {
-        char val;
-        if ((sscanf(argv[2], "%d%c", seed, &val)) != 1) {      // ensures optional seed parameter is solely an integer
-            fprintf(stderr, "%s is not a valid integer\n", argv[3]);
-            return false;
-        } 
-    }
+	// validate number of arguments
+	if (argc < 2 || argc > 3) {
+		fprintf(stderr, "usage: ./server map.txt [seed]\n");
+		return false;
+	}
+	
+	// validate the map file (ensure it is readable)
+	if (!checkFile(argv[1], "r")) {
+		fprintf(stderr, "map file '%s' is not a readable file\n", argv[1]);
+		return false;
+	}
 
-    return true;
+	// validate seed, if provided
+	if (argc == 3) {
+		char val;
+		if ((sscanf(argv[2], "%d%c", seed, &val)) != 1) {      // ensures optional seed parameter is solely an integer
+			fprintf(stderr, "%s is not a valid integer\n", argv[3]);
+			return false;
+		} 
+	}
+
+	return true;
+}
+
+bool checkFile(char *fname, char *openParam)
+{
+	FILE *fp;
+	int fileLen = strlen(fname);              // length of the file's name
+	char *filename = calloc(fileLen + 1, sizeof(char));    // allocate memory to hold file plus '\0'
+	if (filename == NULL) { // error allocating memory
+		return false;
+	}
+	strcpy(filename, fname);        // concatenate the filename
+	// try to open the file based on the openParam; on success clean-up and return true
+	if ((fp = fopen(filename, openParam))) {
+		fclose(fp);
+		free(filename);
+		return true;
+	}
+	// return false if the file could not be opened
+	free(filename);
+	return false;
+}
+
+void findPlayerITR(void *arg, const char *key, void *item)
+{
+	struct findPlayer *fp = arg;
+	player_t *p = item;
+
+	if (message_eqAddr(p->addr, fp->addr)){
+		fp->result = p;
+	}
 }

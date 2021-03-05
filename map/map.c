@@ -10,14 +10,17 @@
 #include <stdbool.h>
 #include <string.h>
 #include "map.h"
+#include "message.h"
 #include "hashtable.h"
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
-char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
+char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
+bool canPlayerCanMoveTo(map_t *map, position_t *pos);
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
-
+void placeGold(void *arg, const char *key, void *item);
+position_t *map_intToPos(map_t *map, int i);
 
 /**************** map_new ****************/
 map_t *map_new(FILE *fp)
@@ -77,43 +80,48 @@ map_t *map_new(FILE *fp)
 
 
 /**************** map_buildPlayerMap ****************/
-map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
+map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
 {
 	map_t *outMap = map_copy(map);
 
-	// Adding player to map
-	int plyIndx = map_calcPosition(outMap, player->pos);
-	outMap->mapStr[plyIndx] = '@';
-
 	// Adding all the gold to the map
-	gold_t *g;
-	int i = 0;
-	if (goldArr != NULL){
-		while ((g = goldArr[i]) != NULL){
-			if (g->isCollected == false){
-				int gIndx = map_calcPosition(outMap, g->pos);
-				outMap->mapStr[gIndx] = '*';
-			}
-			i++;
-		} 
+	if (goldData != NULL){
+        hashtable_iterate(goldData, outMap, placeGold);
 	}
 
 	if (players != NULL){
-		// Adding the other players to the map
+		// Adding the players to the map
 		hashtable_iterate(players, outMap, addPlayerITR);
 	}
 
+    // Replace this player's letter with '@'
+    if (player != NULL) {
+	    int plyIndx = map_calcPosition(outMap, player->pos);
+	    outMap->mapStr[plyIndx] = '@';
+    }
+    outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
+}
+
+void placeGold(void *arg, const char *key, void *item)
+{
+    map_t *outMap = arg;
+    gold_t *g = item;
+    if (!g->isCollected) {
+        int gIndx = map_calcPosition(outMap, g->pos);
+		outMap->mapStr[gIndx] = '*';
+    }
 }
 
 void addPlayerITR(void *arg, const char *key, void *item)
 {
 	map_t *map = arg;
 	player_t *player = item;
-
-	int plyIndx = map_calcPosition(map, player->pos);
-	map->mapStr[plyIndx] = player->name;
+    if (player->isActive) {
+	    int plyIndx = map_calcPosition(map, player->pos);
+	    map->mapStr[plyIndx] = player->letter;
+    }
 }	
 
 
@@ -127,6 +135,20 @@ int map_calcPosition(map_t *map, position_t *pos)
 	return (pos->y * map->width) + (pos->x + 1);
 }
 
+/**************** map_intToPos ****************/
+position_t *map_intToPos(map_t *map, int i)
+{
+    position_t *pos = malloc(sizeof(position_t));
+
+    i--;
+
+    int width = map->width;
+
+    pos->x = i%width;
+    pos->y = i/width;
+
+    return pos;
+}
 
 /**************** buildMap ****************/
 char *map_buildOutput(map_t *map)
@@ -173,11 +195,115 @@ map_t *map_copy(map_t *map)
 
 
 /**************** map_calculateVisibility ****************/
-char *map_calculateVisibility(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players)
+char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
 {
 	return "Place Holder";
 }
 
+
+/**************** map_movePlayer ****************/
+void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
+{
+	// NULL check
+	if (map == NULL || player == NULL || nextPos == NULL){
+		return;
+	}
+
+	position_t *newPos = malloc(sizeof(position_t));
+	if (newPos == NULL){ return; }
+
+	newPos->x = player->pos->x;
+	newPos->y = player->pos->y;
+
+
+
+	int x_direction = 0;
+	int y_direction = 0;
+
+	// Checking direction of movement in x direction
+	if (newPos->x < nextPos->x){ x_direction = 1; } 
+	else { x_direction = -1; }
+
+	// Checking direction of movement in y direction
+	if (newPos->y < nextPos->y){ y_direction = 1; } 
+	else { y_direction = -1; }
+	
+	// Diagonal
+	if (nextPos->x - newPos->x != 0 && nextPos->y - newPos->y != 0) {
+
+		// If movement isn't exactally diagonal return original position
+		if ( abs(nextPos->x - newPos->x) != abs(nextPos->y - newPos->y) ){
+			return;
+		}
+
+		// Adding direction to newPos as long as it is possible
+		while(nextPos->x - newPos->x != 0 && nextPos->y - newPos->y != 0){
+			
+			newPos->y += y_direction;
+			newPos->x += x_direction;
+
+			if (! canPlayerCanMoveTo(map, newPos)){
+				newPos->y -= y_direction;
+				newPos->x -= x_direction;
+				break;
+			}
+		}
+	} 
+
+	// Vertical
+	else if (nextPos->y - newPos->y != 0) { 
+		
+		// Adding direction to newPos as long as it is possible
+		while(nextPos->y - newPos->y != 0){
+			
+			newPos->y += y_direction;
+
+			if (! canPlayerCanMoveTo(map, newPos)){
+				newPos->y -= y_direction;
+				break;
+			}
+		}
+
+	} 
+
+	// Horizontal
+	else if (nextPos->x - newPos->x != 0) {
+		
+		// Adding direction to newPos as long as it is possible
+		while(nextPos->x - newPos->x != 0){
+			
+			newPos->x += x_direction;
+
+			if (! canPlayerCanMoveTo(map, newPos)){
+				newPos->x -= x_direction;
+				break;
+			}
+		}
+
+	}
+
+	player->pos->x = newPos->x;
+	player->pos->y = newPos->y;
+
+    // set nextPos x and y to check if the player moved
+    nextPos->x = player->pos->x;
+    nextPos->y = player->pos->y;
+
+	free(newPos);
+	return;
+}
+
+bool canPlayerCanMoveTo(map_t *map, position_t *pos)
+{
+	int indx = map_calcPosition(map, pos);
+	char c = map->mapStr[indx];
+
+	if (c != ' ' && c != '-' && c != '|' && c != '+'){
+		return true;
+	}
+
+	return false;
+}
 
 
 /**************** map_delete ****************/

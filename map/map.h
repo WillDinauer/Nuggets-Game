@@ -8,7 +8,7 @@
 #define __MAP_H
 
 #include "hashtable.h"
-
+#include "message.h"
 /******************************** DATA STRUCTS ********************************/
 
 /**************** position ****************/
@@ -16,16 +16,15 @@ typedef struct position {
 	int x, y;
 } position_t;
 
-
 /**************** player ****************/
 typedef struct player {
-	int goldCollected;
-	char name;
-	bool isActive;
-	position_t *pos;
-
+    addr_t addr;
+    position_t *pos;
+    int gold;
+    char letter;
+    bool isActive;
+    char *visibility;
 } player_t;
-
 
 /**************** gold ****************/
 typedef struct gold {
@@ -63,7 +62,7 @@ map_t *map_new(FILE *fp);
 * 
 *	Returns NULL if map or player is NULL
 */
-map_t *map_buildPlayerMap(map_t *map, player_t *player, gold_t **goldArr, hashtable_t *players);
+map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
 
 
 /**************** map_calcPosition ****************/
@@ -84,10 +83,18 @@ int map_calcPosition(map_t *map, position_t *pos);
 */
 char *map_buildOutput(map_t *map);
 
+/**************** map_movePlayer ****************/
+/*
+*	A function that moves the player to the given position if allowed
+* 	Function will update player_t player position if allowed
+* 	returns Nothing 
+* 
+*	Returns if map, player or nextPos is NULL
+*/
+void map_movePlayer(map_t *map, player_t *player, position_t *nextPos);
 
-/**************** map_placeGold ****************/
-map_t *map_placeGold(map_t *map, gold_t **goldArr);
-
+/**************** map_intToPos ****************/
+position_t *map_intToPos(map_t *map, int i);
 
 /**************** map_delete ****************/
 /*

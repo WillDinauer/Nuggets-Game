@@ -1,2 +1,6 @@
 server
 server.o
+player
+.nfs*
+server.log
+player.log

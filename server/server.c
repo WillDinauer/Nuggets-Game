@@ -13,6 +13,7 @@
 #include "map.h"
 #include "message.h"
 #include "log.h"
+#include "file.h"
 #include "hashtable.h"
 #include "set.h"
 #include "counters.h"
@@ -58,6 +59,9 @@ void playerFill(void *arg, const char *key, void *item);
 void checkGoldCollect(void *arg, const char *key, void *item);
 void onlyDots(void *arg, int key, int count);
 void keyCount(void *arg, int key, int count);
+void playerDelete(void *item);
+void goldDelete(void *gold);
+static bool handleInput(void *arg);
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos);
 position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo);
 gold_t *gold_new();
@@ -128,14 +132,50 @@ int server(char *argv[], int seed)
     printf("waiting for connections on port %d\n", serverPort);
 
     // continue looping, listening for messages until the end of the game is triggered
-    message_loop(&info, 0, NULL, NULL, handleMessage);
+    message_loop(&info, 0, NULL, handleInput, handleMessage);
 
     // clean up
     message_done();
     log_done();
-    //TODO: add hashtable delete
+    hashtable_delete(playerInfo, playerDelete);
+    hashtable_delete(goldData, goldDelete);
     counters_delete(dotsPos);
     return 0;
+}
+
+static bool handleInput(void *arg)
+{
+    char *line = freadlinep(stdin);
+    if (line == NULL || strcmp(line, "Q") == 0) {
+        free(line);
+        return true;
+    }
+    if (line != NULL) {
+        free(line);
+    }
+    return false;
+}
+
+void playerDelete(void *item) 
+{
+    player_t *player = item;
+    if (player != NULL) {
+        if (player->pos != NULL) {
+            free(player->pos);
+        }
+        free(player);
+    }
+}
+
+void goldDelete(void *item) 
+{
+    gold_t *gold = item;
+    if (gold != NULL) {
+        if (gold->pos != NULL) {
+            free(gold->pos);
+        }
+        free(gold);
+    }
 }
 
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos)
@@ -418,12 +458,12 @@ void sendMaps(serverInfo_t *info)
 void sendQuit(serverInfo_t *info)
 {
     //TODO: BUILD THE GAME OVER STRING TO SEND TO ALL ACTIVE PLAYERS
-    char result[16];
+    char *result = malloc(16);
     strcpy(result, "QUIT GAME OVER\n");
-
 
     hashtable_t *playerInfo = info->playerInfo;
     hashtable_iterate(playerInfo, result, buildGameOverString);
+    
     hashtable_iterate(playerInfo, result, quitFunc);
 
     if (message_isAddr(info->specAddr)) {
@@ -436,17 +476,26 @@ void buildGameOverString(void *arg, const char *key, void *item)
     char *result = arg;
     player_t *player = item;
 
+    int nameLen = strlen(key);
+    int goldCt = player->gold;
 
-    int bufsize = 100; // TODO make this more robust when actual name is implemented
-    char *plyRes = malloc(bufsize); 
-    snprintf(plyRes, bufsize, "%c\t%d\t%s\n", player->letter, player->gold, key); // TODO add actual name when we include that in player_t
-    plyRes = realloc(plyRes, strlen(plyRes) * sizeof(char));
-    
-    strncat(result, plyRes, strlen(result) + strlen(plyRes));
+    int goldLen = snprintf(NULL, 0, "%d", goldCt);
+    char *goldStr = malloc(goldLen + 1);
+    snprintf(goldStr, goldLen + 1, "%d", goldCt);
 
-    free(plyRes);
+    char *line = calloc(goldLen + nameLen + 4, sizeof(char));
+    line[0] = player->letter;
+    strcat(line, "\t");
+    strcat(line, goldStr);
+    strcat(line, "\t");
+    strcat(line, key);
+
+    int resultLen = strlen(result);
+    result = realloc(result, (resultLen + goldLen + nameLen + 4) * sizeof(char));
+    strcat(result, line);
+
+    free(line);
 }
-
 
 void quitFunc(void *arg, const char *key, void *item)
 {
@@ -594,10 +643,12 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
         // convert the integer value of the position to an actual (x, y) position in the map
         position_t *result = map_intToPos(map, finalPos);
 
-        free(filledPos);
-        free(validPositions);
+        counters_delete(filledPos);
+        counters_delete(validPositions);
         return result;
     } else {
+        counters_delete(filledPos);
+        counters_delete(validPositions);
         return NULL;
     }
 }
@@ -630,11 +681,14 @@ void goldFill(void *arg, const char *key, void *item)
     gold_t *gold = item;
     position_t *pos = gold->pos;
 
-    // calculate the integer position of the gold within the map
-    int val = map_calcPosition(map, pos);
+    // only consider uncollected gold as occupying space
+    if (!gold->isCollected) {
+        // calculate the integer position of the gold within the map
+        int val = map_calcPosition(map, pos);
 
-    // add this integer position to the filled counters
-    counters_add(filled, val);
+        // add this integer position to the filled counters
+        counters_add(filled, val);
+    }
 }
 
 void playerFill(void *arg, const char *key, void *item)

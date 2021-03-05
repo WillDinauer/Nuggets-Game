@@ -1,247 +1,51 @@
 START OF LOG
-player on port 47296
+player on port 43230
 spectate
-GRID message received: GRID 21 79
+GRID message received: GRID 5 14
 displayStart: Success
 wRows = 24
 wCols = 105
 GOLD message received: GOLD 0 0 250
 DISPLAY message received
+GOLD message received: GOLD 0 0 236
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 225
 DISPLAY message received
+GOLD message received: GOLD 0 0 203
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 186
 DISPLAY message received
-GOLD message received: GOLD 0 0 239
 DISPLAY message received
-GOLD message received: GOLD 0 0 217
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 209
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 202
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 183
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 165
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 152
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
+GOLD message received: GOLD 0 0 168
 DISPLAY message received
 DISPLAY message received
 GOLD message received: GOLD 0 0 151
 DISPLAY message received
 DISPLAY message received
-GOLD message received: GOLD 0 0 142
 DISPLAY message received
-GOLD message received: GOLD 0 0 125
+GOLD message received: GOLD 0 0 128
 DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 115
+GOLD message received: GOLD 0 0 121
 DISPLAY message received
 DISPLAY message received
+GOLD message received: GOLD 0 0 112
 DISPLAY message received
 GOLD message received: GOLD 0 0 108
 DISPLAY message received
+GOLD message received: GOLD 0 0 89
 DISPLAY message received
+GOLD message received: GOLD 0 0 74
 DISPLAY message received
+GOLD message received: GOLD 0 0 54
 DISPLAY message received
+GOLD message received: GOLD 0 0 40
 DISPLAY message received
+GOLD message received: GOLD 0 0 28
 DISPLAY message received
 DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 105
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 85
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 61
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 57
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 53
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 41
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 29
-DISPLAY message received
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 27
-DISPLAY message received
-DISPLAY message received
-GOLD message received: GOLD 0 0 16
+GOLD message received: GOLD 0 0 3
 DISPLAY message received
 GOLD message received: GOLD 0 0 0
+Unknown message received: 'Ð[ðLV'

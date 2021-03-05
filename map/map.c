@@ -21,6 +21,7 @@ bool canPlayerCanMoveTo(map_t *map, position_t *pos);
 void addPlayerITR(void *arg, const char *key, void *item);
 void placeGold(void *arg, const char *key, void *item);
 position_t *map_intToPos(map_t *map, int i);
+void isOnGoldITR(void *arg, const char *key, void *item);
 
 /**************** map_new ****************/
 map_t *map_new(FILE *fp)
@@ -202,7 +203,7 @@ char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldDat
 
 
 /**************** map_movePlayer ****************/
-void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
+void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable_t *goldData)
 {
 	// NULL check
 	if (map == NULL || player == NULL || nextPos == NULL){
@@ -214,7 +215,6 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 
 	newPos->x = player->pos->x;
 	newPos->y = player->pos->y;
-
 
 
 	int x_direction = 0;
@@ -247,6 +247,12 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 				newPos->x -= x_direction;
 				break;
 			}
+
+			// Checks if during this move they pick up gold
+			player->pos->x = newPos->x;
+			player->pos->y = newPos->y;
+			hashtable_iterate(goldData, player, isOnGoldITR);
+
 		}
 	} 
 
@@ -262,8 +268,12 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 				newPos->y -= y_direction;
 				break;
 			}
-		}
 
+			// Checks if during this move they pick up gold
+			player->pos->x = newPos->x;
+			player->pos->y = newPos->y;
+			hashtable_iterate(goldData, player, isOnGoldITR);
+		}
 	} 
 
 	// Horizontal
@@ -278,12 +288,16 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 				newPos->x -= x_direction;
 				break;
 			}
-		}
 
+			// Checks if during this move they pick up gold
+			player->pos->x = newPos->x;
+			player->pos->y = newPos->y;
+			hashtable_iterate(goldData, player, isOnGoldITR);
+
+		}
 	}
 
-	player->pos->x = newPos->x;
-	player->pos->y = newPos->y;
+
 
     // set nextPos x and y to check if the player moved
     nextPos->x = player->pos->x;
@@ -293,6 +307,8 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 	return;
 }
 
+
+/**************** canPlayerCanMoveTo ****************/
 bool canPlayerCanMoveTo(map_t *map, position_t *pos)
 {
 	int indx = map_calcPosition(map, pos);
@@ -304,6 +320,21 @@ bool canPlayerCanMoveTo(map_t *map, position_t *pos)
 
 	return false;
 }
+
+void isOnGoldITR(void *arg, const char *key, void *item)
+{
+	// sendGoldMessage now happens after in server file after player move is complete
+	player_t *player = arg;
+	gold_t *goldItem = item;
+
+	if(!goldItem->isCollected && player->pos->x == goldItem->pos->x && player->pos->y == goldItem->pos->y){
+		player->gold += goldItem->value;
+		goldItem->isCollected = true;
+	}
+}
+
+
+
 
 
 /**************** map_delete ****************/

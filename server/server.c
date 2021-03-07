@@ -246,7 +246,10 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	    free(f);
 
         // Keeping track of prev gold to find the amount of gold collected on a move
-        int prevGold = fromPlayer->gold;
+        if (fromPlayer != NULL){
+            int prevGold = fromPlayer->gold;
+        }
+        
 
         // handle quit
         if (words[1][0] == 'Q') {
@@ -434,11 +437,13 @@ void sendMaps(serverInfo_t *info)
 }
 
 void sendQuit(serverInfo_t *info)
-{
+{   
+    // allocing result string and copying in the first line
     char *result = (char*) malloc(sizeof(char) * 1000);
     strcpy(result, "QUIT GAME OVER\n");
 
     hashtable_t *playerInfo = info->playerInfo;
+    // Building new string iteratively
     hashtable_iterate(playerInfo, result, buildGameOverString);
     hashtable_iterate(playerInfo, result, quitFunc);
     free(result);
@@ -448,17 +453,17 @@ void sendQuit(serverInfo_t *info)
 
 }
 
+/*********** buildGameOverString ***********/
 void buildGameOverString(void *arg, const char *key, void *item)
 {
     char *result = arg;
     player_t *player = item;
-
-
+    // Making this players score string
     int bufsize = 10 + strlen(key);
     char *plyRes = malloc(bufsize); 
     snprintf(plyRes, bufsize, "%c\t%d\t%s\n", player->letter, player->gold, key);
     
-    // result = realloc(result, (strlen(plyRes) + strlen(result) + 1) * sizeof(char));
+    // Adding the string to the result string
     strncat(result, plyRes, strlen(plyRes) + 1);
 
     free(plyRes);

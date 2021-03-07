@@ -31,7 +31,7 @@ map_t *map_new(FILE *fp)
 		return NULL;
 	}
 
-	char *buffer;
+	char *buffer = "";
 	long length;
 
 	// Loading string into buffer 
@@ -39,7 +39,7 @@ map_t *map_new(FILE *fp)
 		fseek (fp, 0, SEEK_END);
 		length = ftell (fp);
 		fseek (fp, 0, SEEK_SET);
-		buffer = malloc (length);
+		buffer = malloc (length + 1);
 		if (buffer){
 			fread (buffer, 1, length, fp);
 		}
@@ -74,7 +74,7 @@ map_t *map_new(FILE *fp)
 	strcpy(mapStr, buffer);
 
 	map->mapStr = buffer;
-	
+
 	return map;
 }
 
@@ -309,6 +309,10 @@ bool canPlayerCanMoveTo(map_t *map, position_t *pos)
 /**************** map_delete ****************/
 void map_delete(map_t *map)
 {
-	free(map->mapStr);
-	free(map);
+    if (map != NULL) {
+        if (map->mapStr != NULL) {
+            free(map->mapStr);
+        }
+        free(map);
+    }
 }

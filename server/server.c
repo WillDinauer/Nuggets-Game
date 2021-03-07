@@ -107,6 +107,8 @@ int server(char *argv[], int seed)
     fp = fopen(mapfile, "r");
     map_t *map = map_new(fp);
     free(mapfile);
+
+
     if (map == NULL) {
         fprintf(stderr, "unable to load map");
         return 2;
@@ -134,6 +136,7 @@ int server(char *argv[], int seed)
     // clean up
     message_done();
     log_done();
+    map_delete(map);
     //TODO: add hashtable delete
     counters_delete(dotsPos);
     return 0;
@@ -432,18 +435,17 @@ void sendMaps(serverInfo_t *info)
 
 void sendQuit(serverInfo_t *info)
 {
-    //TODO: BUILD THE GAME OVER STRING TO SEND TO ALL ACTIVE PLAYERS
-    char result[16];
+    char *result = (char*) malloc(sizeof(char) * 1000);
     strcpy(result, "QUIT GAME OVER\n");
 
-
     hashtable_t *playerInfo = info->playerInfo;
-    // hashtable_iterate(playerInfo, result, buildGameOverString);
+    hashtable_iterate(playerInfo, result, buildGameOverString);
     hashtable_iterate(playerInfo, result, quitFunc);
-
+    free(result);
     if (message_isAddr(info->specAddr)) {
         message_send(info->specAddr, result);
     }
+
 }
 
 void buildGameOverString(void *arg, const char *key, void *item)
@@ -452,12 +454,12 @@ void buildGameOverString(void *arg, const char *key, void *item)
     player_t *player = item;
 
 
-    int bufsize = 2 + strlen(key) + 5; // TODO make this more robust when actual name is implemented
+    int bufsize = 10 + strlen(key);
     char *plyRes = malloc(bufsize); 
     snprintf(plyRes, bufsize, "%c\t%d\t%s\n", player->letter, player->gold, key);
-    plyRes = realloc(plyRes, strlen(plyRes) * sizeof(char));
     
-    strncat(result, plyRes, strlen(result) + strlen(plyRes));
+    // result = realloc(result, (strlen(plyRes) + strlen(result) + 1) * sizeof(char));
+    strncat(result, plyRes, strlen(plyRes) + 1);
 
     free(plyRes);
 }

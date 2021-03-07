@@ -40,11 +40,12 @@ map_t *map_new(FILE *fp)
 		fseek (fp, 0, SEEK_END);
 		length = ftell (fp);
 		fseek (fp, 0, SEEK_SET);
-		buffer = malloc (length);
+		buffer = malloc (length + 1);
 		if (buffer){
 			fread (buffer, 1, length, fp);
 		}
 		fclose (fp);
+		buffer[length] = '\0';
 	}
 
 	int width = 0;
@@ -74,7 +75,8 @@ map_t *map_new(FILE *fp)
 	char *mapStr = (char*) malloc( (length * sizeof(char)) + 5); 
 	strcpy(mapStr, buffer);
 
-	map->mapStr = buffer;
+	map->mapStr = mapStr;
+	free(buffer);
 	
 	return map;
 }

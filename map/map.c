@@ -103,6 +103,7 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 	    int plyIndx = map_calcPosition(outMap, player->pos);
 	    outMap->mapStr[plyIndx] = '@';
     }
+
     outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
@@ -177,7 +178,7 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
-
+    free(map->mapStr);
 	return newMapStr;
 }
 

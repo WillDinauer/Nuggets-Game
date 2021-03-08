@@ -338,8 +338,6 @@ void isOnGoldITR(void *arg, const char *key, void *item)
 
 
 
-
-
 /**************** map_delete ****************/
 void map_delete(map_t *map)
 {

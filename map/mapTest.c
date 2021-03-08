@@ -22,6 +22,7 @@ int main(const int argc, const char *argv[])
 	position_t *pos = malloc(sizeof(position_t));
 	map_t *plyrMap;
 
+	// Testing player movement 
 	for (int i = 0; i < 20; i++){
 		randPos(pos);
 		map_movePlayer(map, p, pos, hashtable_new(1));
@@ -33,8 +34,14 @@ int main(const int argc, const char *argv[])
 			printf(" -- Invalid Move\n");
 		}
 	}
-
 	printf("%s\n", plyrMap->mapStr);
+
+
+	// Testing map delete
+	if (map != NULL){
+		map_delete(map);
+		printf("map_delete() was successful\n");
+	}
 	
 }
 
@@ -75,7 +82,6 @@ void randPos(position_t *pos)
 
 bool checkValidMove(map_t *map, player_t *p)
 {
-
 	char c = map->mapStr[(p->pos->y * map->width) + (p->pos->x + 1)];
 	if (c != ' ' && c != '-' && c != '|' && c != '+'){
 		return true;

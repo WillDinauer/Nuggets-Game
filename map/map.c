@@ -16,7 +16,7 @@
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
 char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
-bool canPlayerCanMoveTo(map_t *map, position_t *pos);
+bool canPlayerMoveTo(map_t *map, position_t *pos);
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
 void placeGold(void *arg, const char *key, void *item);
@@ -108,6 +108,7 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 	return outMap;
 }
 
+/**************** placeGold ****************/
 void placeGold(void *arg, const char *key, void *item)
 {
     map_t *outMap = arg;
@@ -118,6 +119,7 @@ void placeGold(void *arg, const char *key, void *item)
     }
 }
 
+/**************** addPlayerITR ****************/
 void addPlayerITR(void *arg, const char *key, void *item)
 {
 	map_t *map = arg;
@@ -132,6 +134,7 @@ void addPlayerITR(void *arg, const char *key, void *item)
 /**************** map_calcPosition ****************/
 int map_calcPosition(map_t *map, position_t *pos)
 {
+	// checking that pos is not out of bounds
 	if (pos->x > map->width || pos->y > map->height || pos->x < 0 || pos->y < 0){
 		return -1;
 	}
@@ -155,15 +158,19 @@ position_t *map_intToPos(map_t *map, int i)
 }
 
 /**************** buildMap ****************/
+/*
+* returned string must be freed by the caller
+*/
 char *map_buildOutput(map_t *map)
 {
 
 	if (map == NULL){
 		return NULL;
 	}
-
+	// Getting len of built up map
 	int newLen = strlen(map->mapStr) + map->height;
 
+	// creating new map str in mem
 	char *newMapStr = (char*) malloc( (newLen * sizeof(char)) + 5 ); 
 	strcpy(newMapStr, map->mapStr);
 
@@ -178,6 +185,7 @@ char *map_buildOutput(map_t *map)
 		}
 	}
 
+
 	return newMapStr;
 }
 
@@ -185,11 +193,14 @@ char *map_buildOutput(map_t *map)
 /**************** map_copy ****************/
 map_t *map_copy(map_t *map)
 {
+	// Creating new mem for map
 	map_t *newMap = malloc(sizeof(map_t));
 
+	// Copying the h and w
 	newMap->width = map->width;
 	newMap->height = map->height;
 
+	// allocating new mem and copying into newMap
 	char *newMapStr = (char*) malloc( (strlen(map->mapStr) * sizeof(char)) + 5); 
 	strcpy(newMapStr, map->mapStr);
 	newMap->mapStr = newMapStr;
@@ -213,15 +224,15 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 		return;
 	}
 
+	// newPos is the pos that we update throughout the loop
 	position_t *newPos = malloc(sizeof(position_t));
 	if (newPos == NULL){ return; }
 
 	newPos->x = player->pos->x;
 	newPos->y = player->pos->y;
 
-
-	int x_direction = 0;
-	int y_direction = 0;
+	int x_direction;
+	int y_direction;
 
 	// Checking direction of movement in x direction
 	if (newPos->x < nextPos->x){ x_direction = 1; } 
@@ -245,7 +256,7 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			newPos->y += y_direction;
 			newPos->x += x_direction;
 
-			if (! canPlayerCanMoveTo(map, newPos)){
+			if (! canPlayerMoveTo(map, newPos)){
 				newPos->y -= y_direction;
 				newPos->x -= x_direction;
 				break;
@@ -267,7 +278,7 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			
 			newPos->y += y_direction;
 
-			if (! canPlayerCanMoveTo(map, newPos)){
+			if (! canPlayerMoveTo(map, newPos)){
 				newPos->y -= y_direction;
 				break;
 			}
@@ -287,7 +298,7 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			
 			newPos->x += x_direction;
 
-			if (! canPlayerCanMoveTo(map, newPos)){
+			if (! canPlayerMoveTo(map, newPos)){
 				newPos->x -= x_direction;
 				break;
 			}
@@ -300,8 +311,6 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 		}
 	}
 
-
-
     // set nextPos x and y to check if the player moved
     nextPos->x = player->pos->x;
     nextPos->y = player->pos->y;
@@ -312,11 +321,13 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 
 
 /**************** canPlayerCanMoveTo ****************/
-bool canPlayerCanMoveTo(map_t *map, position_t *pos)
-{
+bool canPlayerMoveTo(map_t *map, position_t *pos)
+{	
+	// Calculating the index in the string from the pos
 	int indx = map_calcPosition(map, pos);
 	char c = map->mapStr[indx];
 
+	// Checking if pos is a space where you cant move to
 	if (c != ' ' && c != '-' && c != '|' && c != '+'){
 		return true;
 	}
@@ -340,7 +351,8 @@ void isOnGoldITR(void *arg, const char *key, void *item)
 
 /**************** map_delete ****************/
 void map_delete(map_t *map)
-{
+{	
+	// Deletes map str and map if not null
     if (map != NULL) {
         if (map->mapStr != NULL) {
             free(map->mapStr);

@@ -36,7 +36,6 @@ int main(const int argc, const char *argv[])
 	}
 	printf("%s\n", plyrMap->mapStr);
 
-
 	// Testing map delete
 	if (map != NULL){
 		map_delete(map);

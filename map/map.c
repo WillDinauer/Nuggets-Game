@@ -32,7 +32,7 @@ map_t *map_new(FILE *fp)
 		return NULL;
 	}
 
-	char *buffer;
+	char *buffer = "";
 	long length;
 
 	// Loading string into buffer 
@@ -75,9 +75,10 @@ map_t *map_new(FILE *fp)
 	char *mapStr = (char*) malloc( (length * sizeof(char)) + 5); 
 	strcpy(mapStr, buffer);
 
+
 	map->mapStr = mapStr;
 	free(buffer);
-	
+
 	return map;
 }
 
@@ -342,6 +343,10 @@ void isOnGoldITR(void *arg, const char *key, void *item)
 /**************** map_delete ****************/
 void map_delete(map_t *map)
 {
-	free(map->mapStr);
-	free(map);
+    if (map != NULL) {
+        if (map->mapStr != NULL) {
+            free(map->mapStr);
+        }
+        free(map);
+    }
 }

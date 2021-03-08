@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <unistd.h>
+#include "file.h"
 #include "map.h"
 #include "message.h"
 #include "log.h"
@@ -65,6 +66,7 @@ gold_t *gold_new();
 /**************** Server Communication Functions ****************/
 void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter);
 void sendSpectatorView(serverInfo_t *info);
+static bool handleInput(void *arg);
 static bool handleMessage(void *arg, const addr_t from, const char *message);
 void sendMaps(serverInfo_t *info);
 void sendQuit(serverInfo_t *info);
@@ -142,7 +144,7 @@ int server(char *argv[], int seed)
     printf("waiting for connections on port %d\n", serverPort);
 
     // continue looping, listening for messages until the end of the game is triggered
-    message_loop(&info, 0, NULL, NULL, handleMessage);
+    message_loop(&info, 0, NULL, handleInput, handleMessage);
 
     // clean up
     message_done();
@@ -152,6 +154,15 @@ int server(char *argv[], int seed)
     hashtable_delete(goldData, goldDelete);
     counters_delete(dotsPos);
     return 0;
+}
+
+static bool handleInput(void *arg)
+{
+    char *line;
+    if ((line = freadlinep(stdin)) == NULL) {
+        return true;
+    }
+    return false;
 }
 
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos)
@@ -298,27 +309,33 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                 }
             }
         } else {
+            // track the current position of the player before they move
             position_t *prePos = malloc(sizeof(position_t));
             prePos->x = fromPlayer->pos->x;
-            prePos->y = fromPlayer->pos->y; 
+            prePos->y = fromPlayer->pos->y;
+            if (prePos == NULL) {   // out of memory
+                free(line);
+                return true;
+            }
+
             if (validateAction(words[1], fromPlayer, info)) {   // validate the input action of the player
-			      hashtable_t *goldData = info->goldData;
+                hashtable_t *goldData = info->goldData;
                 
                 // check if the player has collided with another player
                 pb_t pb = {prePos, fromPlayer->pos, from};
                 hashtable_iterate(info->playerInfo, &pb, checkPlayerCollision);
-
 
                 // Recount gold availability         
                 *info->goldCt = 0;       
                 hashtable_iterate(goldData, info, recountGold);
                
                 int justReceived = fromPlayer->gold - prevGold;
-              
+
                 if (justReceived > 0) {
                   gb_t goldBundle = {fromPlayer, info->goldCt};
+
                   // send the gold message to the player
-                  sendGoldMessage(fromPlayer->addr, justReceived, prevGold, *info->goldCt);
+                  sendGoldMessage(from, justReceived, fromPlayer->gold, *info->goldCt);
                   // send updated gold messages to other existing players...
                   hashtable_iterate(info->playerInfo, &goldBundle, sendOthersGold);
                   // send the gold message to the spectator (if there is one)
@@ -331,12 +348,14 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                 if(*info->goldCt == 0) {
                     sendQuit(info);
                     free(line);
+                    free(prePos);
                     return true;
                 } else {
                     // otherwise, send the updated maps as usual
                     sendMaps(info);
                 }
             }
+            free(prePos);
 		}
     // new spectator
 	} else if (strcmp(words[0], "SPECTATE") == 0) {
@@ -361,6 +380,22 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 
 void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
 {
+    if (letter != 's') {    // indicates whether the client is a spectator or a player
+    // send the "OK L" message to the player
+        char *letterMessage = malloc(5);
+        if (letterMessage != NULL) {
+            strcpy(letterMessage, "OK ");
+            
+            // add the player's corresponding letter
+            letterMessage[3] = letter;
+            letterMessage[4] = '\0';
+
+            // send the message
+            message_send(from, letterMessage);
+            free(letterMessage);
+        }
+    }
+
     int NR = info->map->height;     // map height
     int NC = info->map->width;      // map width
 
@@ -397,23 +432,7 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
     }
     free(NRstr);
     free(NCstr);
-
-    if (letter != 's') {    // indicates whether the client is a spectator or a player
-    // send the "OK L" message to the player
-        char *letterMessage = malloc(5);
-        if (letterMessage != NULL) {
-            strcpy(letterMessage, "OK ");
-            
-            // add the player's corresponding letter
-            letterMessage[3] = letter;
-            letterMessage[4] = '\0';
-
-            // send the message
-            message_send(from, letterMessage);
-            free(letterMessage);
-        }
-    }
-
+    
     // send the initial gold message
     sendGoldMessage(from, 0, 0, *info->goldCt);
 }
@@ -488,11 +507,10 @@ void sendQuit(serverInfo_t *info)
     // Building new string iteratively
     hashtable_iterate(playerInfo, result, buildGameOverString);
     hashtable_iterate(playerInfo, result, quitFunc);
-    free(result);
     if (message_isAddr(info->specAddr)) {
         message_send(info->specAddr, result);
     }
-
+    free(result);
 }
 
 /*********** buildGameOverString ***********/
@@ -655,10 +673,12 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
         // convert the integer value of the position to an actual (x, y) position in the map
         position_t *result = map_intToPos(map, finalPos);
 
-        free(filledPos);
-        free(validPositions);
+        counters_delete(filledPos);
+        counters_delete(validPositions);
         return result;
     } else {
+        counters_delete(filledPos);
+        counters_delete(validPositions);
         return NULL;
     }
 }
@@ -821,8 +841,8 @@ void sendOthersGold(void *arg, const char *key, void *item)
     player_t *player = item;
 
     // send the updated gold count to all other players
-    if (!message_eqAddr(alreadySent->addr, player->addr)) {
-        sendGoldMessage(player->addr, 0, 0, *goldCt);
+    if (!message_eqAddr(alreadySent->addr, player->addr) && player->isActive) {
+        sendGoldMessage(player->addr, 0, player->gold, *goldCt);
     }
 }
 

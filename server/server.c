@@ -85,6 +85,9 @@ void recountGold(void *arg, const char *key, void *item);
 void findPos(void *arg, int key, int count);
 void onlyDots(void *arg, int key, int count);
 void keyCount(void *arg, int key, int count);
+void playerDelete(void *item);
+void goldDelete(void *item);
+
 
 int main(int argc, char *argv[])
 {
@@ -264,10 +267,11 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	    // Player that sent command
 	    player_t *fromPlayer = f->result;
 	    free(f);
+        int prevGold = 0;
 
         // Keeping track of prev gold to find the amount of gold collected on a move
         if (fromPlayer != NULL){
-            int prevGold = fromPlayer->gold;
+            prevGold = fromPlayer->gold;
         }
         
 
@@ -308,13 +312,13 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                 // Recount gold availability         
                 *info->goldCt = 0;       
                 hashtable_iterate(goldData, info, recountGold);
-                
-                int justRecieved = fromPlayer->gold - prevGold;
+               
+                int justReceived = fromPlayer->gold - prevGold;
               
                 if (justReceived > 0) {
                   gb_t goldBundle = {fromPlayer, info->goldCt};
                   // send the gold message to the player
-                  sendGoldMessage(fromPlayer->addr, justRecieved, fromPlayer->gold, *info->goldCt);
+                  sendGoldMessage(fromPlayer->addr, justReceived, prevGold, *info->goldCt);
                   // send updated gold messages to other existing players...
                   hashtable_iterate(info->playerInfo, &goldBundle, sendOthersGold);
                   // send the gold message to the spectator (if there is one)
@@ -734,6 +738,28 @@ void onlyDots(void *arg, int key, int count)
     if (counters_get(filled, key) == 0) {
         // thus, add it to the counters of valid positions
         counters_add(validPos, key);
+    }
+}
+
+void playerDelete(void *item)
+{
+    player_t *player = item;
+    if (player != NULL) {
+        if (player->pos != NULL) {
+            free(player->pos);
+        }
+        free(player);
+    }
+}
+
+void goldDelete(void *item)
+{
+    gold_t *gold = item;
+    if (gold != NULL) {
+        if (gold->pos != NULL) {
+            free(gold->pos);
+        }
+        free(gold);
     }
 }
 

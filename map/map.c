@@ -1,8 +1,7 @@
 /*
 * map.c implementation of map module
 *
-* Angus Emmett
-* some sources from stackoverflow: https://stackoverflow.com/questions/174531/how-to-read-the-content-of-a-file-to-a-string-in-c
+* some sources used http://www.fundza.com/c4serious/fileIO_reading_all/index.html: 
 */
 
 #include <stdio.h>
@@ -32,21 +31,24 @@ map_t *map_new(FILE *fp)
 		return NULL;
 	}
 
-	char *buffer = "";
-	long length;
-
-	// Loading string into buffer 
-	if (fp){
-		fseek (fp, 0, SEEK_END);
-		length = ftell (fp);
-		fseek (fp, 0, SEEK_SET);
-		buffer = malloc (length + 1);
-		if (buffer){
-			fread (buffer, 1, length, fp);
-		}
-		fclose (fp);
-		buffer[length] = '\0';
+	char *buffer;
+	long numbytes;
+		
+	// Getting total num of bytes and moving ptr back to start of file
+	fseek(fp, 0L, SEEK_END);
+	numbytes = ftell(fp);
+	fseek(fp, 0L, SEEK_SET);	
+	
+	// Allocating new mem for string
+	buffer = (char*)calloc(numbytes, sizeof(char));	
+	// Mem check
+	if(buffer == NULL){
+		return NULL;
 	}
+		
+	// Copy all chars into string
+	fread(buffer, sizeof(char), numbytes, fp);
+	
 
 	int width = 0;
 	int height = 0; 
@@ -72,7 +74,7 @@ map_t *map_new(FILE *fp)
 	map->width = width / height;
 	map->height = height;
 
-	char *mapStr = (char*) malloc( (length * sizeof(char)) + 5); 
+	char *mapStr = (char*) malloc( (numbytes * sizeof(char)) + 5); 
 	strcpy(mapStr, buffer);
 
 

@@ -20,6 +20,8 @@ int main(const int argc, const char *argv[])
 
 	player_t *p = makePlayer();
 	position_t *pos = malloc(sizeof(position_t));
+	pos->x = 7;
+	pos->y = 4;
 	map_t *plyrMap;
 
 	// Testing player movement 

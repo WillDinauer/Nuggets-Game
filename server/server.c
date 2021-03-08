@@ -13,7 +13,6 @@
 #include "map.h"
 #include "message.h"
 #include "log.h"
-#include "file.h"
 #include "hashtable.h"
 #include "set.h"
 #include "counters.h"
@@ -48,9 +47,7 @@ struct findPlayer {
 
 typedef struct goldBundle {
     player_t *player;
-    addr_t specAddr;
     int *goldCt;
-    hashtable_t *goldData;
 } gb_t;
 
 /**************** Functions ****************/
@@ -60,15 +57,6 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info);
 counters_t *getDotsPos(char *map);
 bool validateParameters(int argc, char *argv[], int *seed);
 bool checkFile(char *fname, char *openParam);
-void findPos(void *arg, int key, int count);
-void goldFill(void *arg, const char *key, void *item);
-void playerFill(void *arg, const char *key, void *item);
-void checkGoldCollect(void *arg, const char *key, void *item);
-void onlyDots(void *arg, int key, int count);
-void keyCount(void *arg, int key, int count);
-void playerDelete(void *item);
-void goldDelete(void *gold);
-static bool handleInput(void *arg);
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos);
 position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo);
 gold_t *gold_new();
@@ -82,6 +70,7 @@ void sendMaps(serverInfo_t *info);
 void sendQuit(serverInfo_t *info);
 void sendGoldMessage(addr_t from, int collected, int purse, int remain);
 
+
 /**************** Iterators ****************/
 void findPlayerITR(void *arg, const char *key, void *item);
 void buildGameOverString(void *arg, const char *key, void *item);
@@ -90,6 +79,12 @@ void quitFunc(void *arg, const char *key, void *item);
 void searchActivePlayers(void *arg, const char *key, void *item);
 void checkPlayerCollision(void *arg, const char *key, void *item);
 void sendOthersGold(void *arg, const char *key, void *item);
+void goldFill(void *arg, const char *key, void *item);
+void playerFill(void *arg, const char *key, void *item);
+void recountGold(void *arg, const char *key, void *item);
+void findPos(void *arg, int key, int count);
+void onlyDots(void *arg, int key, int count);
+void keyCount(void *arg, int key, int count);
 
 int main(int argc, char *argv[])
 {
@@ -120,6 +115,8 @@ int server(char *argv[], int seed)
     fp = fopen(mapfile, "r");
     map_t *map = map_new(fp);
     free(mapfile);
+
+
     if (map == NULL) {
         fprintf(stderr, "unable to load map");
         return 2;
@@ -142,7 +139,7 @@ int server(char *argv[], int seed)
     printf("waiting for connections on port %d\n", serverPort);
 
     // continue looping, listening for messages until the end of the game is triggered
-    message_loop(&info, 0, NULL, handleInput, handleMessage);
+    message_loop(&info, 0, NULL, NULL, handleMessage);
 
     // clean up
     message_done();
@@ -152,41 +149,6 @@ int server(char *argv[], int seed)
     hashtable_delete(goldData, goldDelete);
     counters_delete(dotsPos);
     return 0;
-}
-
-static bool handleInput(void *arg)
-{
-    char *line = freadlinep(stdin);
-    if (line == NULL || strcmp(line, "Q") == 0) {
-        free(line);
-        return true;
-    }
-    if (line != NULL) {
-        free(line);
-    }
-    return false;
-}
-
-void playerDelete(void *item) 
-{
-    player_t *player = item;
-    if (player != NULL) {
-        if (player->pos != NULL) {
-            free(player->pos);
-        }
-        free(player);
-    }
-}
-
-void goldDelete(void *item) 
-{
-    gold_t *gold = item;
-    if (gold != NULL) {
-        if (gold->pos != NULL) {
-            free(gold->pos);
-        }
-        free(gold);
-    }
 }
 
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos)
@@ -268,6 +230,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	char *words[2];
 	splitline(line, words);
 
+
     // call the appropriate function relevant to the first word provided by the client
     // new player
 	if (strcmp(words[0], "PLAY") == 0) {
@@ -302,6 +265,12 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	    player_t *fromPlayer = f->result;
 	    free(f);
 
+        // Keeping track of prev gold to find the amount of gold collected on a move
+        if (fromPlayer != NULL){
+            int prevGold = fromPlayer->gold;
+        }
+        
+
         // handle quit
         if (words[1][0] == 'Q') {
             if (message_eqAddr(from, info->specAddr)) { // quit message is from the spectator
@@ -329,15 +298,30 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
             prePos->x = fromPlayer->pos->x;
             prePos->y = fromPlayer->pos->y; 
             if (validateAction(words[1], fromPlayer, info)) {   // validate the input action of the player
-			    hashtable_t *goldData = info->goldData;
+			      hashtable_t *goldData = info->goldData;
                 
                 // check if the player has collided with another player
                 pb_t pb = {prePos, fromPlayer->pos, from};
                 hashtable_iterate(info->playerInfo, &pb, checkPlayerCollision);
 
-                // check if the player collected any gold
-                gb_t goldBundle = {fromPlayer, info->specAddr, info->goldCt, info->goldData};
-                hashtable_iterate(goldData, &goldBundle, checkGoldCollect);
+
+                // Recount gold availability         
+                *info->goldCt = 0;       
+                hashtable_iterate(goldData, info, recountGold);
+                
+                int justRecieved = fromPlayer->gold - prevGold;
+              
+                if (justReceived > 0) {
+                  gb_t goldBundle = {fromPlayer, info->goldCt};
+                  // send the gold message to the player
+                  sendGoldMessage(fromPlayer->addr, justRecieved, fromPlayer->gold, *info->goldCt);
+                  // send updated gold messages to other existing players...
+                  hashtable_iterate(info->playerInfo, &goldBundle, sendOthersGold);
+                  // send the gold message to the spectator (if there is one)
+                  if (message_isAddr(info->specAddr)) {
+                      sendGoldMessage(info->specAddr, 0, 0, *info->goldCt);
+                  }
+                }
 
                 // if the gold remaining in the game has reached 0, send the game over screen to all clients
                 if(*info->goldCt == 0) {
@@ -491,47 +475,37 @@ void sendMaps(serverInfo_t *info)
 }
 
 void sendQuit(serverInfo_t *info)
-{
-    //TODO: BUILD THE GAME OVER STRING TO SEND TO ALL ACTIVE PLAYERS
-    char *result = malloc(16);
+{   
+    // allocing result string and copying in the first line
+    char *result = (char*) malloc(sizeof(char) * 1000);
     strcpy(result, "QUIT GAME OVER\n");
 
     hashtable_t *playerInfo = info->playerInfo;
+    // Building new string iteratively
     hashtable_iterate(playerInfo, result, buildGameOverString);
-    
     hashtable_iterate(playerInfo, result, quitFunc);
-
+    free(result);
     if (message_isAddr(info->specAddr)) {
         message_send(info->specAddr, result);
     }
+
 }
 
+/*********** buildGameOverString ***********/
 void buildGameOverString(void *arg, const char *key, void *item)
 {
     char *result = arg;
     player_t *player = item;
-
-    int nameLen = strlen(key);
-    int goldCt = player->gold;
-
-    int goldLen = snprintf(NULL, 0, "%d", goldCt);
-    char *goldStr = malloc(goldLen + 1);
-    snprintf(goldStr, goldLen + 1, "%d", goldCt);
-
-    char *line = calloc(goldLen + nameLen + 4, sizeof(char));
-    line[0] = player->letter;
-    strcat(line, "\t");
-    strcat(line, goldStr);
-    strcat(line, "\t");
-    strcat(line, key);
-
-    int resultLen = strlen(result);
-    result = realloc(result, (resultLen + goldLen + nameLen + 4) * sizeof(char));
-    strcat(result, line);
-
-    free(goldStr);
-    free(line);
+    // Making this players score string
+    int bufsize = 10 + strlen(key);
+    char *plyRes = malloc(bufsize); 
+    snprintf(plyRes, bufsize, "%c\t%d\t%s\n", player->letter, player->gold, key);
+    
+    // Adding the string to the result string
+    strncat(result, plyRes, strlen(plyRes) + 1);
+    free(plyRes);
 }
+
 
 void quitFunc(void *arg, const char *key, void *item)
 {
@@ -677,12 +651,10 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
         // convert the integer value of the position to an actual (x, y) position in the map
         position_t *result = map_intToPos(map, finalPos);
 
-        counters_delete(filledPos);
-        counters_delete(validPositions);
+        free(filledPos);
+        free(validPositions);
         return result;
     } else {
-        counters_delete(filledPos);
-        counters_delete(validPositions);
         return NULL;
     }
 }
@@ -715,14 +687,11 @@ void goldFill(void *arg, const char *key, void *item)
     gold_t *gold = item;
     position_t *pos = gold->pos;
 
-    // only consider uncollected gold as occupying space
-    if (!gold->isCollected) {
-        // calculate the integer position of the gold within the map
-        int val = map_calcPosition(map, pos);
+    // calculate the integer position of the gold within the map
+    int val = map_calcPosition(map, pos);
 
-        // add this integer position to the filled counters
-        counters_add(filled, val);
-    }
+    // add this integer position to the filled counters
+    counters_add(filled, val);
 }
 
 void playerFill(void *arg, const char *key, void *item)
@@ -805,37 +774,16 @@ void checkPlayerCollision(void *arg, const char *key, void *item)
 }
 
 /*
- * function to check if a player has collected gold
+ * An iterator to recount the gold that is left, called after a player moves
+ * *info->goldCt must be set to 0 before the iterator is called
  */
-void checkGoldCollect(void *arg, const char *key, void *item)
+void recountGold(void *arg, const char *key, void *item)
 {
-    gb_t *goldBundle = arg;
-    player_t *player = goldBundle->player;
-    addr_t specAddr = goldBundle->specAddr;
-    int *goldCt = goldBundle->goldCt;
-    gold_t *gold = item;
+    serverInfo_t *info = arg;
+    gold_t *goldItem = item;
 
-    // if the player's position and an uncollected gold position match...
-    if (!gold->isCollected && player->pos->x == gold->pos->x && player->pos->y == gold->pos->y) {
-        // update the gold to be collected
-        gold->isCollected = true;
-
-        int value = gold->value;
-        int collected = player->gold;
-        // add the value of the collected gold to the player's existing purse
-        player->gold = collected + value;
-
-        // decrement to the total remaining gold in the game
-        (*goldCt) -= value;
-
-        // send the gold message to the player
-        sendGoldMessage(player->addr, value, player->gold, *goldCt);
-        // send updated gold messages to other existing players...
-        hashtable_iterate(goldBundle->goldData, goldBundle, sendOthersGold);
-        // send the gold message to the spectator (if there is one)
-        if (message_isAddr(specAddr)) {
-            sendGoldMessage(specAddr, 0, 0, *goldCt);
-        }
+    if (!goldItem->isCollected){
+       *info->goldCt += goldItem->value;
     }
 }
 

@@ -77,7 +77,7 @@ bool validateAction(char *keyPress, player_t *player, serverInfo_t *info)
     int x = player->pos->x;
     int y = player->pos->y;
 	// Check the move player 
-	map_movePlayer(info->map, player, nextPos);
+	map_movePlayer(info->map, player, nextPos, info->goldData);
 
     if (x == nextPos->x && y == nextPos-> y) {
         free(nextPos);

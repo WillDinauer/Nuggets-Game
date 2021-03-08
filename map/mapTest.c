@@ -23,15 +23,6 @@ int main(const int argc, const char *argv[])
 
 	printf("#######################################################\n");
 
-	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 6;
-	pos->y = 0;
-
-	map_movePlayer(map, p, pos);
-
-	plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
-	printf("%s\n", plyrMap->mapStr);
-
 }
 
 

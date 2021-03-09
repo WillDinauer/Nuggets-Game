@@ -138,11 +138,11 @@ void addPlayerITR(void *arg, const char *key, void *item)
 int map_calcPosition(map_t *map, position_t *pos)
 {
 	// checking that pos is not out of bounds
-	if (pos->x > map->width || pos->y > map->height || pos->x < 0 || pos->y < 0){
+	if (pos->x > map->width || pos->y > map->height || pos->x < -1 || pos->y < -1){
 		return -1;
 	}
 
-	return (pos->y * map->width) + (pos->x + 1);
+	return (pos->y * map->width) + (pos->x);
 }
 
 /**************** map_intToPos ****************/
@@ -313,6 +313,12 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 
 		}
 	}
+
+	if(player->pos->x < 0){ player->pos->x = 0; }
+	if(player->pos->y < 0){ player->pos->y = 0; }
+
+	if(player->pos->x >= map->width){ player->pos->x = map->width - 1; }
+	if(player->pos->y >= map->height){ player->pos->y = map->height - 1; }
 
     // set nextPos x and y to check if the player moved
     nextPos->x = player->pos->x;

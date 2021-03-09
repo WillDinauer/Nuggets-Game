@@ -188,7 +188,7 @@ char *map_buildOutput(map_t *map)
 		}
 	}
   
-  free(map->mapStr);
+    free(map->mapStr);
 	return newMapStr;
 }
 

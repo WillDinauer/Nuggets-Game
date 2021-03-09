@@ -271,6 +271,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 		}
     // key press from player or spectator
 	} else if (strcmp(words[0], "KEY") == 0) {
+
         // Finding player from address
 	    struct findPlayer *f = malloc(sizeof(struct findPlayer));
 	    f->addr = from;
@@ -278,10 +279,10 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	    // Player that sent command
 	    player_t *fromPlayer = f->result;
 	    free(f);
-        int prevGold = 0;
 
+        int prevGold = 0;
         // Keeping track of prev gold to find the amount of gold collected on a move
-        if (fromPlayer != NULL){
+        if (!message_eqAddr(from, info->specAddr)){
             prevGold = fromPlayer->gold;
         }
         
@@ -577,6 +578,8 @@ void mapSend(void *arg, const char* key, void *item)
     if (playerMap == NULL) {    // out of memory
         return;
     }
+
+    printf("player pos x: %d, y: %d\n", player->pos->x, player->pos->y);
 
     int len = strlen(playerMap->mapStr);
     char *message = malloc(len + 9);

@@ -105,7 +105,6 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 	    int plyIndx = map_calcPosition(outMap, player->pos);
 	    outMap->mapStr[plyIndx] = '@';
     }
-
     outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
@@ -138,8 +137,17 @@ void addPlayerITR(void *arg, const char *key, void *item)
 int map_calcPosition(map_t *map, position_t *pos)
 {
 	// checking that pos is not out of bounds
-	if (pos->x > map->width || pos->y > map->height || pos->x < 0 || pos->y < 0){
-		return -1;
+	if (pos->x > map->width){
+		return (pos->y + 1) * map->width;
+	} 
+	else if (pos->y > map->height){
+		return (map->height * map->width) + pos->x;
+	}
+	else if (pos->x < 0){
+		return pos->y * map->width;
+	}
+	else if (pos->y < 0) {
+		return pos->x + 1;
 	}
 
 	return (pos->y * map->width) + (pos->x + 1);
@@ -187,8 +195,9 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
-  
+
     free(map->mapStr);
+
 	return newMapStr;
 }
 

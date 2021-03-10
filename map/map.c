@@ -305,6 +305,7 @@ void passageVis(char *currentVis, int i, map_t *map, char *mapstring, player_t *
             wallChar(mapstring, currentVis, plusy);
             wallChar(mapstring, currentVis, minusy);
         }
+        free(pos);
     }
 }
 
@@ -334,7 +335,9 @@ bool isVisible(map_t *map, int i, player_t *player)
     bool vis = true;
 
     // get position of the point in question
+    //  and get another position ready for looping
     position_t *gridpoint = map_intToPos(map, i);
+    position_t *thispos;
     
     // establish slope m and constant b according to
     //  the standard linear equation y = mx + b
@@ -344,12 +347,27 @@ bool isVisible(map_t *map, int i, player_t *player)
     float slope, constant;
     rise = player->pos->y - gridpoint->y;
     run = player->pos->x - gridpoint->x;
-    slope = rise / run;
+    
+    // check for vertical line (no slope)
+    if (run == 0) {
+        for (int k = strlen(map->mapStr); i >= 0; i--) {
+            thispos = map_intToPos(map, k);
+            if (thispos->x == player->pos->x) {
+                // it's on the line; check for obstruction
+                if (checkObstruct(k, map)) {
+                    vis = false;
+                }
+            }
+        }
+        return vis;
+    } else {
+        slope = rise / run;
+    }
     constant = player->pos->y - (player->pos->x*slope);
     
     // loop through map to look for obstructions
     for (int j = strlen(map->mapStr); i >= 0; i--) {
-        position_t *thispos = map_intToPos(map, j);
+        thispos = map_intToPos(map, j);
         // check whether this point is between
         //  the point of interest and the player's position
         if (!(((thispos->x <= player->pos->x &&
@@ -409,6 +427,8 @@ bool isVisible(map_t *map, int i, player_t *player)
             }
         }
     }
+    free(gridpoint);
+    free(thispos);
     return vis;
 }
 

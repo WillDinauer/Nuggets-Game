@@ -12,16 +12,27 @@ bool checkValidMove(map_t *map, player_t *p);
 int main(const int argc, const char *argv[])
 {
 
-	FILE *fp = fopen("../maps/main.txt", "r");
+	FILE *fp = fopen("../maps/small.txt", "r");
 
 	map_t *map = map_new(fp);
 	printf("map width: %d, height: %d\n\n", map->width, map->height);
 
+	
 
 	player_t *p = makePlayer();
 	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 7;
+	pos->x = 4;
 	pos->y = 4;
+
+	hashtable_t *seen = hashtable_new(10);
+	map_calcVisPath(map,p->visibility ,p->pos, pos, seen, false);
+	printf("Done\n");
+
+	return 0;
+
+
+
+
 	map_t *plyrMap;
 
 	// Testing player movement 
@@ -50,8 +61,8 @@ int main(const int argc, const char *argv[])
 player_t *makePlayer()
 {
 	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 6;
-	pos->y = 2;
+	pos->x = 1;
+	pos->y = 1;
 
 	player_t *p = malloc(sizeof(player_t));
 	p->pos = pos;

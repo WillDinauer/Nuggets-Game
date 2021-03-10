@@ -242,10 +242,8 @@ map_t *map_copy(map_t *map)
 
 void map_calculateVisibility(map_t *map, player_t *player)
 {
-	char *vis = player->visibility;
-	int playX = player->pos->x;
-	int playY = player->pos->y;
-	int i, h;
+
+	const int VISDIST = 10;
 
 	if (strlen(vis) == 0) {
 		int finalPos = map->width * map->height;
@@ -254,15 +252,28 @@ void map_calculateVisibility(map_t *map, player_t *player)
 		}
 	}
 
-	//TODO: REPLACE WITH ACTUAL VISIBILITY MATH/LOGIC
-	for (i = playX - 2; i < playX + 3; i++) {
-		for (h = playY - 2; h < playY + 3; h++) {
-			if (i >= 0 && i <= map->width && h >= 0 && h <= map->height) {
-				int pos = h * map->width + i + 1;
-				vis[pos] = '1';
+
+	position_t *pos = malloc(sizeof(position_t));
+
+	
+	for (pos->x = player->pos->x - VISDIST; ; pos->x++){
+		for (pos->y = player->pos->y - VISDIST; ; pos->y++){
+
+			// Make sure I only get cells that border the VISDIST around player (e.g if VISDIST = 3 we don't want cell (1,1))
+			if (   (pos->x != player->pos->x - VISDIST || pos->x != player->pos->x + VISDIST ) 
+				&& (pos->y != player->pos->y - VISDIST || pos->y != player->pos->y + VISDIST )){
+				continue;
 			}
+
+			// Calculating the visibility from player pos and updating visibility string
+			hashtable_t seen = hashtable_new(10);
+			map_calcVisPath(map, player->visibility, player->pos, pos, seen, false);
+			hashtable_delete(seen, NULL) // TODO add delete function
 		}
 	}
+
+	free(pos);
+
 }
 
 
@@ -297,9 +308,11 @@ void map_calcVisPath(map_t *map, char *visStr, position_t *pos1, position_t *pos
 
 				int mapIndx = map_calcPosition(map, newPos);
 				if (isObstruct(map->mapStr[mapIndx])){
-					map_calcVisPath(map, " ", newPos, pos2, seen, true);
+					visStr[mapIndx] = '0';
+					map_calcVisPath(map, visStr, newPos, pos2, seen, true);
 				} 
 				else { 
+					visStr[mapIndx] = '1';
 					hashtable_insert(seen, posStr, newPos);
 					printf("%c\n", map->mapStr[mapIndx]);
 				}
@@ -309,8 +322,9 @@ void map_calcVisPath(map_t *map, char *visStr, position_t *pos1, position_t *pos
 			
 			free(posStr);
 		}
-
 	}
+
+
 	hashtable_print(seen, stdout, myPrint);
 
 }

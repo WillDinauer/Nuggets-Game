@@ -119,6 +119,7 @@ int server(char *argv[], int seed)
     strcpy(mapfile, argv[1]);
     fp = fopen(mapfile, "r");
     map_t *map = map_new(fp);
+    fclose(fp);
     free(mapfile);
 
 
@@ -271,6 +272,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 		}
     // key press from player or spectator
 	} else if (strcmp(words[0], "KEY") == 0) {
+
         // Finding player from address
 	    struct findPlayer *f = malloc(sizeof(struct findPlayer));
 	    f->addr = from;
@@ -278,10 +280,10 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	    // Player that sent command
 	    player_t *fromPlayer = f->result;
 	    free(f);
-        int prevGold = 0;
 
+        int prevGold = 0;
         // Keeping track of prev gold to find the amount of gold collected on a move
-        if (fromPlayer != NULL){
+        if (!message_eqAddr(from, info->specAddr)){
             prevGold = fromPlayer->gold;
         }
         
@@ -302,6 +304,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                 bool activePlayers = false;
                 hashtable_iterate(info->playerInfo, &activePlayers, searchActivePlayers);
                 if (!activePlayers && !message_isAddr(info->specAddr)) {
+                    free(line);
                     return true;
                 } else {
                     // send the updated maps to all clients
@@ -578,6 +581,8 @@ void mapSend(void *arg, const char* key, void *item)
         return;
     }
 
+    printf("player pos x: %d, y: %d\n", player->pos->x, player->pos->y);
+
     int len = strlen(playerMap->mapStr);
     char *message = malloc(len + 9);
     if (message != NULL) {
@@ -621,10 +626,13 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     player->letter = letter;
     player->isActive = true;
     player->gold = 0;
-    player->visibility = "";    //TODO: Visibility
+    player->visibility = calloc(info->map->width * info->map->height + 1, sizeof(char));
 
     // get a random unoccupied position in the map (where a '.' character is)
     player->pos = getRandomPos(info->map, info->dotsPos, info->goldData, info->playerInfo);
+
+    // calcualte the initial visibility of the player
+    map_calculateVisibility(info->map, player);
 
     return player;
 }
@@ -767,6 +775,9 @@ void playerDelete(void *item)
     if (player != NULL) {
         if (player->pos != NULL) {
             free(player->pos);
+        }
+        if (player->visibility != NULL) {
+            free(player->visibility);
         }
         free(player);
     }

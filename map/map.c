@@ -14,13 +14,14 @@
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
-char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players);
+void map_calculateVisibility(map_t *map, player_t *player);
 bool canPlayerMoveTo(map_t *map, position_t *pos);
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
 void placeGold(void *arg, const char *key, void *item);
 position_t *map_intToPos(map_t *map, int i);
 void isOnGoldITR(void *arg, const char *key, void *item);
+void applyVis(map_t *map, char *vis);
 
 /**************** map_new ****************/
 map_t *map_new(FILE *fp)
@@ -104,11 +105,32 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
     if (player != NULL) {
 	    int plyIndx = map_calcPosition(outMap, player->pos);
 	    outMap->mapStr[plyIndx] = '@';
+        
+        //TODO: add function to replace out of vision gold and players w/ default '.' or '#'
+
+        applyVis(outMap, player->visibility);
     }
 
     outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
+}
+
+/**************** applyVis ****************/
+void applyVis(map_t *map, char *vis)
+{
+    if (strlen(map->mapStr) != strlen(vis)) {   // defensive programming
+        return;
+    }
+
+    int finalPos = map->height * map->width;
+    int i = 0;
+
+    for (i = 0; i < finalPos; i++) {
+        if (vis[i] == '0') {
+            map->mapStr[i] = ' ';
+        }
+    }
 }
 
 /**************** placeGold ****************/
@@ -132,7 +154,6 @@ void addPlayerITR(void *arg, const char *key, void *item)
 	    map->mapStr[plyIndx] = player->letter;
     }
 }	
-
 
 /**************** map_calcPosition ****************/
 int map_calcPosition(map_t *map, position_t *pos)
@@ -187,8 +208,7 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
-  
-  free(map->mapStr);
+    free(map->mapStr);
 	return newMapStr;
 }
 
@@ -213,9 +233,29 @@ map_t *map_copy(map_t *map)
 
 
 /**************** map_calculateVisibility ****************/
-char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
+void map_calculateVisibility(map_t *map, player_t *player)
 {
-	return "Place Holder";
+	char *vis = player->visibility;
+    int playX = player->pos->x;
+    int playY = player->pos->y;
+    int i, h;
+
+    if (strlen(vis) == 0) {
+        int finalPos = map->width * map->height;
+        for (i = 0; i < finalPos; i++) {
+           strcat(vis, "0");
+        }
+    }
+
+    //TODO: REPLACE WITH ACTUAL VISIBILITY MATH/LOGIC
+    for (i = playX - 2; i < playX + 3; i++) {
+        for (h = playY - 2; h < playY + 3; h++) {
+            if (i >= 0 && i <= map->width && h >= 0 && h <= map->height) {
+                int pos = h * map->width + i + 1;
+                vis[pos] = '1';
+            }
+        }
+    }
 }
 
 
@@ -269,6 +309,9 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
+            
+            // Update visibility
+            map_calculateVisibility(map, player);
 
 		}
 	} 
@@ -290,6 +333,10 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
+            
+            // Update visibility
+            map_calculateVisibility(map, player);
+
 		}
 	} 
 
@@ -310,7 +357,9 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-
+            
+            // Update visibility
+            map_calculateVisibility(map, player);
 		}
 	}
 

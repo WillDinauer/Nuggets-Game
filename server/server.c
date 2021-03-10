@@ -304,6 +304,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                 bool activePlayers = false;
                 hashtable_iterate(info->playerInfo, &activePlayers, searchActivePlayers);
                 if (!activePlayers && !message_isAddr(info->specAddr)) {
+                    free(line);
                     return true;
                 } else {
                     // send the updated maps to all clients

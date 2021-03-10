@@ -248,8 +248,8 @@ void map_calculateVisibility(map_t *map, player_t *player)
     }
 
     //TODO: REPLACE WITH ACTUAL VISIBILITY MATH/LOGIC
-    for (i = playX - 1; i < playX + 2; i++) {
-        for (h = playY - 1; h < playY + 2; h++) {
+    for (i = playX - 2; i < playX + 3; i++) {
+        for (h = playY - 2; h < playY + 3; h++) {
             if (i >= 0 && i <= map->width && h >= 0 && h <= map->height) {
                 int pos = h * map->width + i + 1;
                 vis[pos] = '1';
@@ -309,6 +309,9 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
+            
+            // Update visibility
+            map_calculateVisibility(map, player);
 
 		}
 	} 
@@ -330,6 +333,10 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
+            
+            // Update visibility
+            map_calculateVisibility(map, player);
+
 		}
 	} 
 
@@ -350,7 +357,9 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-
+            
+            // Update visibility
+            map_calculateVisibility(map, player);
 		}
 	}
 
@@ -363,8 +372,6 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
     // set nextPos x and y to check if the player moved
     nextPos->x = player->pos->x;
     nextPos->y = player->pos->y;
-
-    map_calculateVisibility(map, player);
 
 	free(newPos);
 	return;

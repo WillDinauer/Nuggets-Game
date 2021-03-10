@@ -119,6 +119,7 @@ int server(char *argv[], int seed)
     strcpy(mapfile, argv[1]);
     fp = fopen(mapfile, "r");
     map_t *map = map_new(fp);
+    fclose(fp);
     free(mapfile);
 
 
@@ -624,10 +625,13 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     player->letter = letter;
     player->isActive = true;
     player->gold = 0;
-    player->visibility = "";    //TODO: Visibility
+    player->visibility = calloc(info->map->width * info->map->height + 1, sizeof(char));
 
     // get a random unoccupied position in the map (where a '.' character is)
     player->pos = getRandomPos(info->map, info->dotsPos, info->goldData, info->playerInfo);
+
+    // calcualte the initial visibility of the player
+    map_calculateVisibility(info->map, player);
 
     return player;
 }
@@ -770,6 +774,9 @@ void playerDelete(void *item)
     if (player != NULL) {
         if (player->pos != NULL) {
             free(player->pos);
+        }
+        if (player->visibility != NULL) {
+            free(player->visibility);
         }
         free(player);
     }

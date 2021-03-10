@@ -83,6 +83,11 @@ int map_calcPosition(map_t *map, position_t *pos);
 */
 char *map_buildOutput(map_t *map);
 
+
+/***************** map_calculateVisibility *************/
+void map_calculateVisibility(map_t *map, player_t *player);
+
+
 /**************** map_movePlayer ****************/
 /*
 *	A function that moves the player to the given position if allowed

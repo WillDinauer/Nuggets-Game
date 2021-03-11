@@ -1,4 +1,11 @@
-# Nuggets
+# Nuggets: Bash Boys
+### Team Members:
+### Angus Emmett (Gusemmett), William Dinauer (WillDinauer), and Jacob Wesley Dell (j-w-dell)
+
+## Subdirectories
+[map](map/README.md) contains all logic pertaining to map-building, gold placement, and player movement
+
+[server](server/README.md) contains all logic pertaining to client-server interactions, messaging, and general gameplay
 
 This repository contains the code for the CS50 "Nuggets" game, in which players explore a set of rooms and passageways in search of gold nuggets.
 The rooms and passages are defined by a *map* loaded by the server at the start of the game.

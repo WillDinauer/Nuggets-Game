@@ -40,7 +40,7 @@ typedef struct map {
 	int width, height;
 } map_t;
 
-void map_calcVisPath(map_t *map, char *visStr, position_t *pos1, position_t *pos2, hashtable_t *seen, bool isAddingToSeen);
+void map_calculateVisibility(map_t *map, player_t *player);
 
 /******************************** FUNCTIONS ********************************/
 

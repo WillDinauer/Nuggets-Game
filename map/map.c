@@ -22,6 +22,10 @@ char *posToStr(position_t *pos);
 
 void myPrint(FILE *fp, const char *key, void *item);
 
+void map_calcVisPath(map_t *map, char *visStr, position_t *pos1, position_t *pos2, hashtable_t *seen, bool isAddingToSeen);
+void insideFunc(map_t *map, char *visStr, position_t *pos1, position_t *pos2, hashtable_t *seen, bool isAddingToSeen);
+
+
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
 void placeGold(void *arg, const char *key, void *item);
@@ -113,8 +117,7 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 		outMap->mapStr[plyIndx] = '@';
 		
 		//TODO: add function to replace out of vision gold and players w/ default '.' or '#'
-
-		applyVis(outMap, player->visibility);
+		map_calculateVisibility(map, player);
 	}
 
 	outMap->mapStr = map_buildOutput(outMap);
@@ -124,22 +127,6 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 	return outMap;
 }
 
-/**************** applyVis ****************/
-void applyVis(map_t *map, char *vis)
-{
-	if (strlen(map->mapStr) != strlen(vis)) {   // defensive programming
-		return;
-	}
-
-	int finalPos = map->height * map->width;
-	int i = 0;
-
-	for (i = 0; i < finalPos; i++) {
-		if (vis[i] == '0') {
-			map->mapStr[i] = ' ';
-		}
-	}
-}
 
 /**************** placeGold ****************/
 void placeGold(void *arg, const char *key, void *item)
@@ -171,7 +158,7 @@ int map_calcPosition(map_t *map, position_t *pos)
 		return -1;
 	}
 
-	return (pos->y * map->width) + (pos->x + 1);
+	return (pos->y * map->width) + (pos->x);
 }
 
 /**************** map_intToPos ****************/
@@ -243,98 +230,109 @@ map_t *map_copy(map_t *map)
 void map_calculateVisibility(map_t *map, player_t *player)
 {
 
-	const int VISDIST = 10;
-
-	if (strlen(vis) == 0) {
-		int finalPos = map->width * map->height;
-		for (i = 0; i < finalPos; i++) {
-		   strcat(vis, "0");
-		}
-	}
-
+	const int VISDIST = 4;
 
 	position_t *pos = malloc(sizeof(position_t));
 
-	
-	for (pos->x = player->pos->x - VISDIST; ; pos->x++){
-		for (pos->y = player->pos->y - VISDIST; ; pos->y++){
+	// TODO update to go around map boarder
+	for (pos->x = player->pos->x - VISDIST; pos->x <= player->pos->x + VISDIST;  pos->x++){
+		for (pos->y = player->pos->y - VISDIST; pos->y <= player->pos->y + VISDIST; pos->y++){
 
-			// Make sure I only get cells that border the VISDIST around player (e.g if VISDIST = 3 we don't want cell (1,1))
-			if (   (pos->x != player->pos->x - VISDIST || pos->x != player->pos->x + VISDIST ) 
-				&& (pos->y != player->pos->y - VISDIST || pos->y != player->pos->y + VISDIST )){
+			// Make sure I only get cells that border the VISDIST around player
+			if (pos->x > player->pos->x - VISDIST && pos->x < player->pos->x + VISDIST &&
+				pos->y > player->pos->y - VISDIST && pos->y < player->pos->y + VISDIST){
 				continue;
 			}
 
 			// Calculating the visibility from player pos and updating visibility string
-			hashtable_t seen = hashtable_new(10);
+			hashtable_t *seen = hashtable_new(10); // TODO update to larger size to get better performance
 			map_calcVisPath(map, player->visibility, player->pos, pos, seen, false);
-			hashtable_delete(seen, NULL) // TODO add delete function
+			hashtable_delete(seen, NULL); // TODO add delete function
 		}
 	}
 
-	free(pos);
+	// printf("%s\n", map_buildOutput(map));
+	// map->mapStr = player->visibility;
+	// printf("%s\n", map_buildOutput(map));
 
+	free(pos);
 }
 
 
 void map_calcVisPath(map_t *map, char *visStr, position_t *pos1, position_t *pos2, hashtable_t *seen, bool isAddingToSeen)
 {
 
-	int x_dir, y_dir;
+	int x_dir = 0;
+	int y_dir = 0;
 	// Checking direction of movement in x direction
 	if (pos1->x < pos2->x){ x_dir = 1; } 
-	else { x_dir = -1; }
+	else if (pos1->x > pos2->x){ x_dir = -1; }
 
 	// Checking direction of movement in y direction
 	if (pos1->y < pos2->y){ y_dir = 1; } 
-	else { y_dir = -1; }
+	else if (pos1->y > pos2->y){ y_dir = -1; }
 
 	position_t *newPos = malloc(sizeof(position_t));
-	
-	// Looping through all common rows and cols (exclusive)
+
+	// Do a look only on these first just incase theres an obstruction
+	if (!isAddingToSeen){
+		newPos->x = pos1->x + x_dir;
+		newPos->y = pos1->y;
+		insideFunc(map, visStr, newPos, pos2, seen, isAddingToSeen);
+
+		newPos->x = pos1->x;
+		newPos->y = pos1->y + y_dir;
+		insideFunc(map, visStr, newPos, pos2, seen, isAddingToSeen);
+	}
+
+	// Diagonal Looking
 	for(newPos->x = pos1->x + x_dir; (newPos->x * x_dir) < (pos2->x * x_dir); newPos->x += x_dir){
 		for(newPos->y = pos1->y + y_dir; (newPos->y * y_dir) < (pos2->y * y_dir); newPos->y += y_dir){
-
-			printf("x:%d, y:%d\n", newPos->x, newPos->y);
-			char *posStr = posToStr(newPos);
-
-			if (isAddingToSeen){
-				hashtable_insert(seen, posStr, newPos);
-				free(posStr);
-				continue;
-			}
-
-			if (hashtable_find(seen, posStr) == NULL){
-
-				int mapIndx = map_calcPosition(map, newPos);
-				if (isObstruct(map->mapStr[mapIndx])){
-					visStr[mapIndx] = '0';
-					map_calcVisPath(map, visStr, newPos, pos2, seen, true);
-				} 
-				else { 
-					visStr[mapIndx] = '1';
-					hashtable_insert(seen, posStr, newPos);
-					printf("%c\n", map->mapStr[mapIndx]);
-				}
-
-			}
-
-			
-			free(posStr);
+			insideFunc(map, visStr, newPos, pos2, seen, isAddingToSeen);
 		}
 	}
 
+	// Horizontal 
+	if (x_dir == 0){
+		for(newPos->y = pos1->y; (newPos->y * y_dir) < (pos2->y * y_dir); newPos->y += y_dir){
+			insideFunc(map, visStr, newPos, pos2, seen, isAddingToSeen);
+		}
+	}
 
-	hashtable_print(seen, stdout, myPrint);
+	// Vertical
+	if (y_dir == 0){
+		for(newPos->x = pos1->x; (newPos->x * x_dir) < (pos2->x * x_dir); newPos->x += x_dir){
+			insideFunc(map, visStr, newPos, pos2, seen, isAddingToSeen);
+		}
+	}
 
 }
 
-
-
-void myPrint(FILE *fp, const char *key, void *item)
+void insideFunc(map_t *map, char *visStr, position_t *newPos, position_t *pos2, hashtable_t *seen, bool isAddingToSeen)
 {
-	fprintf(fp, "%s", key);
+
+	char *posStr = posToStr(newPos);
+
+	if (isAddingToSeen){
+		hashtable_insert(seen, posStr, newPos);
+		free(posStr);
+		return;
+	}
+
+	if (hashtable_find(seen, posStr) == NULL){
+
+		hashtable_insert(seen, posStr, newPos);
+		int mapIndx = map_calcPosition(map, newPos);
+		visStr[mapIndx] = '1';
+		
+		if (isObstruct(map->mapStr[mapIndx])){
+			map_calcVisPath(map, visStr, newPos, pos2, seen, true);
+		} 
+
+	}
+	free(posStr);
 }
+
 
 
 /**************** posToStr ****************/

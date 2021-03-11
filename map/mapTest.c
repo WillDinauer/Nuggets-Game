@@ -5,7 +5,7 @@
 #include "map.h"
 #include "hashtable.h"
 
-player_t *makePlayer();
+player_t *makePlayer(map_t *map);
 void randPos(position_t *pos);
 bool checkValidMove(map_t *map, player_t *p);
 
@@ -18,56 +18,64 @@ int main(const int argc, const char *argv[])
 	printf("map width: %d, height: %d\n\n", map->width, map->height);
 
 	
+	player_t *p = makePlayer(map);
 
-	player_t *p = makePlayer();
-	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 4;
-	pos->y = 4;
+	int indx = map_calcPosition(map, p->pos);
+	map->mapStr[indx] = '@';
 
-	hashtable_t *seen = hashtable_new(10);
-	map_calcVisPath(map,p->visibility ,p->pos, pos, seen, false);
+
+	map_calculateVisibility(map, p);
 	printf("Done\n");
 
 	return 0;
 
 
+	// map_t *plyrMap;
 
+	// // Testing player movement 
+	// for (int i = 0; i < 20; i++){
+	// 	randPos(pos);
+	// 	map_movePlayer(map, p, pos, hashtable_new(1));
+	// 	plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
 
-	map_t *plyrMap;
+	// 	if (checkValidMove(map,p)){
+	// 		printf(" -- Valid Move\n");
+	// 	} else {
+	// 		printf(" -- Invalid Move\n");
+	// 	}
+	// }
+	// printf("%s\n", plyrMap->mapStr);
 
-	// Testing player movement 
-	for (int i = 0; i < 20; i++){
-		randPos(pos);
-		map_movePlayer(map, p, pos, hashtable_new(1));
-		plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
-
-		if (checkValidMove(map,p)){
-			printf(" -- Valid Move\n");
-		} else {
-			printf(" -- Invalid Move\n");
-		}
-	}
-	printf("%s\n", plyrMap->mapStr);
-
-	// Testing map delete
-	if (map != NULL){
-		map_delete(map);
-		printf("map_delete() was successful\n");
-	}
+	// // Testing map delete
+	// if (map != NULL){
+	// 	map_delete(map);
+	// 	printf("map_delete() was successful\n");
+	// }
 	
 }
 
 
-player_t *makePlayer()
+player_t *makePlayer(map_t *map)
 {
-	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 1;
-	pos->y = 1;
+	player_t *player = malloc(sizeof(player_t));
+	if (player == NULL) { // out of memory
+		return NULL;
+	} 
+	// initialize player info
+	player->isActive = true;
+	player->gold = 0;
+	player->visibility = calloc(map->width * map->height + 1, sizeof(char));
 
-	player_t *p = malloc(sizeof(player_t));
-	p->pos = pos;
+	player->pos = malloc(sizeof(position_t));
+	player->pos->x = 6;
+	player->pos->y = 3;
 
-	return p;
+
+	for (int i = 0; i < map->width * map->height; i++) {
+		strcat(player->visibility, "0");
+	}
+
+	return player;
 }
 
 void randPos(position_t *pos)

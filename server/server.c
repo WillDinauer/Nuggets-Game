@@ -581,8 +581,6 @@ void mapSend(void *arg, const char* key, void *item)
         return;
     }
 
-    printf("player pos x: %d, y: %d\n", player->pos->x, player->pos->y);
-
     int len = strlen(playerMap->mapStr);
     char *message = malloc(len + 9);
     if (message != NULL) {
@@ -627,6 +625,11 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     player->isActive = true;
     player->gold = 0;
     player->visibility = calloc(info->map->width * info->map->height + 1, sizeof(char));
+
+    // Building out init vis string
+    for (int i = 0; i < info->map->width * info->map->height; i++) {
+		strcat(player->visibility, "0");
+	}
 
     // get a random unoccupied position in the map (where a '.' character is)
     player->pos = getRandomPos(info->map, info->dotsPos, info->goldData, info->playerInfo);

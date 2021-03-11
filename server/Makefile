@@ -22,7 +22,7 @@ serverUtils.o: serverUtils.h
 .PHONY: clean valgrind test
 
 test: $(PROG)
-	./$(PROG) 2>server.log ../maps/small.txt
+	./$(PROG) 2>server.log ../maps/main.txt
 
 valgrind: $(PROG)
 	valgrind --leak-check=full --show-leak-kinds=all ./$(PROG) 2>server.log ../maps/small.txt

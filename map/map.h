@@ -40,10 +40,10 @@ typedef struct map {
 	int width, height;
 } map_t;
 
-void map_calculateVisibility(map_t *map, player_t *player);
 
 /******************************** FUNCTIONS ********************************/
 
+void map_calcVisPath2(map_t *map, player_t *player, position_t *pos);
 
 /**************** map_new ****************/
 /*

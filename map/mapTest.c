@@ -67,7 +67,7 @@ player_t *makePlayer(map_t *map)
 	player->visibility = calloc(map->width * map->height + 1, sizeof(char));
 
 	player->pos = malloc(sizeof(position_t));
-	player->pos->x = 6;
+	player->pos->x = 7;
 	player->pos->y = 3;
 
 

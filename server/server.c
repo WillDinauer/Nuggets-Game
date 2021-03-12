@@ -634,9 +634,6 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     // get a random unoccupied position in the map (where a '.' character is)
     player->pos = getRandomPos(info->map, info->dotsPos, info->goldData, info->playerInfo);
 
-    // calcualte the initial visibility of the player
-    map_calculateVisibility(info->map, player);
-
     return player;
 }
 

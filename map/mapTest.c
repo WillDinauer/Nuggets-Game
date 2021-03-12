@@ -24,7 +24,7 @@ int main(const int argc, const char *argv[])
 	map->mapStr[indx] = '@';
 
 
-	map_calculateVisibility(map, p);
+	// map_calculateVisibility(map, p->);
 	printf("Done\n");
 
 	return 0;

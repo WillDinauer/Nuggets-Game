@@ -19,7 +19,7 @@ typedef struct position {
 /**************** player ****************/
 typedef struct player {
     addr_t addr;
-    position_t *pos;
+    position_t *pos; 
     int gold;
     char letter;
     bool isActive;
@@ -43,7 +43,6 @@ typedef struct map {
 
 /******************************** FUNCTIONS ********************************/
 
-void map_calcVisPath2(map_t *map, player_t *player, position_t *pos);
 
 /**************** map_new ****************/
 /*
@@ -86,7 +85,7 @@ char *map_buildOutput(map_t *map);
 
 
 /***************** map_calculateVisibility *************/
-void map_calculateVisibility(map_t *map, player_t *player);
+void map_calculateVisibility(map_t *map, char *vis, position_t *pos);
 
 
 /**************** map_movePlayer ****************/

@@ -30,5 +30,5 @@ test: $(PROG)
 
 clean:
 	rm -f $(PROG)
-	rm -f *~ *.o
+	rm -f *~ *.o *core*
 	rm -rf *.dSYM

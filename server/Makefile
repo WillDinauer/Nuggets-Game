@@ -29,5 +29,5 @@ valgrind: $(PROG)
 
 clean:
 	rm -rf *.dSYM  # MacOS debugger info
-	rm -f *~ *.o
+	rm -f *~ *.o *core*
 	rm -f $(PROG)

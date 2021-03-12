@@ -146,7 +146,7 @@ void applyVis(map_t *map, char *vis)
 
 char *initVisStr(int width, int height)
 {	
-	char vis = calloc(width * height + 1, sizeof(char));
+	char *vis = calloc(width * height + 1, sizeof(char));
 	for (int i = 0; i < width * height; i++) {
 		strcat(vis, "0");
 	}

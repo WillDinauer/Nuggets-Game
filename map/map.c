@@ -410,7 +410,6 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
             map_calculateVisibility(map,visHere, player->pos);
             intersectVis(player->visibility, visHere);
             free(visHere);
-			
 		}
 	} 
 

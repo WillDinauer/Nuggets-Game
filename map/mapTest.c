@@ -19,39 +19,44 @@ int main(const int argc, const char *argv[])
 
 	
 	player_t *p = makePlayer(map);
+	map_t *plyrMap;
+	position_t *pos = malloc(sizeof(position_t));
 
-	int indx = map_calcPosition(map, p->pos);
-	map->mapStr[indx] = '@';
+	// Testing player movement 
+	for (int i = 0; i < 20; i++){
+		randPos(pos);
+		map_movePlayer(map, p, pos, hashtable_new(1));
+		plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
 
+		if (checkValidMove(map,p)){
+			printf(" -- Valid Move\n");
+		} else {
+			printf(" -- Invalid Move\n");
+		}
+	}
+	printf("%s\n", plyrMap->mapStr);
 
-	// map_calculateVisibility(map, p->);
-	printf("Done\n");
+	// Testing map delete
+	if (map != NULL){
+		map_delete(map);
+		printf("map_delete() was successful\n");
+	}
+	if (plyrMap != NULL){
+		map_delete(plyrMap);
+		printf("map_delete() was successful\n");
+	}
 
-	return 0;
+	if (p != NULL) {
+        if (p->pos != NULL) {
+            free(p->pos);
+        }
+        if (p->visibility != NULL) {
+            free(p->visibility);
+        }
+        free(p);
+    }
 
-
-	// map_t *plyrMap;
-
-	// // Testing player movement 
-	// for (int i = 0; i < 20; i++){
-	// 	randPos(pos);
-	// 	map_movePlayer(map, p, pos, hashtable_new(1));
-	// 	plyrMap = map_buildPlayerMap(map,p,NULL, NULL);
-
-	// 	if (checkValidMove(map,p)){
-	// 		printf(" -- Valid Move\n");
-	// 	} else {
-	// 		printf(" -- Invalid Move\n");
-	// 	}
-	// }
-	// printf("%s\n", plyrMap->mapStr);
-
-	// // Testing map delete
-	// if (map != NULL){
-	// 	map_delete(map);
-	// 	printf("map_delete() was successful\n");
-	// }
-	
+	free(pos);
 }
 
 

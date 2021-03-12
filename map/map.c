@@ -127,6 +127,11 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 	return outMap;
 }
 
+void orMap(map_t *map, player_t player)
+{
+	
+}
+
 
 /**************** placeGold ****************/
 void placeGold(void *arg, const char *key, void *item)

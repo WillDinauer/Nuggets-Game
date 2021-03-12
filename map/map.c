@@ -248,7 +248,8 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
-
+	
+	free(map->mapStr); 
 	return newMapStr;
 }
 
@@ -264,7 +265,7 @@ map_t *map_copy(map_t *map)
 	newMap->height = map->height;
 
 	// allocating new mem and copying into newMap
-	char *newMapStr = (char*) malloc( (strlen(map->mapStr) * sizeof(char)) + 5); 
+	char *newMapStr = calloc((map->width * map->height) + 1, sizeof(char));
 	strcpy(newMapStr, map->mapStr);
 	newMap->mapStr = newMapStr;
 

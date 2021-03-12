@@ -9,6 +9,8 @@
 
 Our [custom map](maps/bashboysmap.txt) outlines a "B B" design with various standard map features (passageways, obstructing walls, small rooms, etc)
 
+`make` to compile all code recursively; `make test` to run test case (see `testing.md`); `make clean` to remove object/executable/extraneous files
+
 This repository contains the code for the CS50 "Nuggets" game, in which players explore a set of rooms and passageways in search of gold nuggets.
 The rooms and passages are defined by a *map* loaded by the server at the start of the game.
 The gold nuggets are randomly distributed in *piles* within the rooms.

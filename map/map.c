@@ -23,6 +23,7 @@ void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
 void myPrint(FILE *fp, const char *key, void *item);
 void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
 char *initVisStr(int width, int height);
+void intersectVis(char *vis1, char *vis2);
 
 
 /**************** Iterator Functions ****************/
@@ -154,6 +155,16 @@ char *initVisStr(int width, int height)
 		strcat(vis, "0");
 	}
 	return vis;
+}
+
+void intersectVis(char *vis1, char *vis2)
+{
+    for (int i = 0; i < strlen(vis1); i++) {
+        // Or-ing the vis strings
+        if(vis1[i] == '1' || vis2[i] == '1'){
+            vis1[i] = '1';
+        }
+    }
 }
 
 
@@ -394,6 +405,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
+
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
 			
 		}
 	} 
@@ -416,6 +432,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
 
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
+
 		}
 	} 
 
@@ -436,7 +457,12 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-			
+
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
+
 		}
 	}
 

@@ -57,7 +57,7 @@ map_t *map_new(FILE *fp)
 		
 	// Copy all chars into string
 	fread(buffer, sizeof(char), numbytes, fp);
-	
+        
 
 	int width = 0;
 	int height = 0; 

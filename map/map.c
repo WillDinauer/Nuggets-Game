@@ -18,7 +18,7 @@ map_t *map_copy(map_t *map);
 bool isObstruct(char c);
 bool canPlayerMoveTo(map_t *map, position_t *pos);
 char *posToStr(position_t *pos);
-
+void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
 void myPrint(FILE *fp, const char *key, void *item);
 void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
 char *initVisStr(int width, int height);
@@ -114,10 +114,7 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 		int plyIndx = map_calcPosition(outMap, player->pos);
 		outMap->mapStr[plyIndx] = '@';
 		
-		//TODO: add function to replace out of vision gold and players w/ default '.' or '#'
-		char *currVis = initVisStr(map->width, map->height);
-
-		map_calculateVisibility(map, currVis, player->pos);
+		replaceBlocked(map, outMap, player);
 		applyVis(outMap, player->visibility);
 	}
 
@@ -143,6 +140,26 @@ void applyVis(map_t *map, char *vis)
             map->mapStr[i] = ' ';
         }
     }
+}
+
+void replaceBlocked(map_t *map, map_t *outMap, player_t *player)
+{
+	char *visHere = initVisStr(map->width, map->height);
+	map_calculateVisibility(map,visHere, player->pos);
+
+    if (visHere != NULL) {
+        for (int i = 0; i < strlen(visHere); i++) {
+			// for any gold or players that should not be currently visible, convert them to their default symbol in the map
+            if (visHere[i] == '0' && (isalpha(outMap->mapStr[i]) || outMap->mapStr[i] == '*')) {
+                    outMap->mapStr[i] = map->mapStr[i]; 
+            }
+			// Or-ing the vis strings
+			if(player->visibility[i] == '1' || visHere[i] == '1'){
+				player->visibility[i] = '1';
+			}
+        }
+    }
+	free(visHere);
 }
 
 
@@ -260,22 +277,15 @@ void map_calculateVisibility(map_t *map, char *vis, position_t *pos)
 
 	position_t *newPos = malloc(sizeof(position_t));
 
-	// TODO update to go around map boarder
-	for (newPos->x = -1; newPos->x <= map->width;  newPos->x++){
-		for (newPos->y = -1; newPos->y <= map->height; newPos->y++){
-
-			// Make sure I only get cells that border the VISDIST around player
-			if (newPos->x > - 1 && newPos->x < map->width &&
-				newPos->y > - 1 && newPos->y < map->height){
-				continue;
-			}
+	for (newPos->x = 0; newPos->x < map->width;  newPos->x++){
+		for (newPos->y = 0; newPos->y < map->height; newPos->y++){
 
 			// Calculating the visibility from player pos and updating visibility string
 			map_calcVisPath(map, vis, pos, newPos);
 		}
 	}
 
-	free(pos);
+	free(newPos);
 }
 
 void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2)

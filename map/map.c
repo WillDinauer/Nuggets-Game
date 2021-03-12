@@ -12,6 +12,7 @@
 #include "map.h"
 #include "message.h"
 #include "hashtable.h"
+#include "file.h"
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
@@ -40,25 +41,8 @@ map_t *map_new(FILE *fp)
 		return NULL;
 	}
 
-	char *buffer;
-	long numbytes;
+	char *buffer = freadfilep(fp);
 		
-	// Getting total num of bytes and moving ptr back to start of file
-	fseek(fp, 0L, SEEK_END);
-	numbytes = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);	
-	
-	// Allocating new mem for string
-	buffer = (char*)calloc(numbytes, sizeof(char));	
-	// Mem check
-	if(buffer == NULL){
-		return NULL;
-	}
-		
-	// Copy all chars into string
-	fread(buffer, sizeof(char), numbytes, fp);
-	
-
 	int width = 0;
 	int height = 0; 
 	int offset = 0;
@@ -83,7 +67,7 @@ map_t *map_new(FILE *fp)
 	map->width = width / height;
 	map->height = height;
 
-	char *mapStr = (char*) malloc( (numbytes * sizeof(char)) + 5); 
+	char *mapStr = (char*) malloc( (strlen(buffer) * sizeof(char)) + 5); 
 	strcpy(mapStr, buffer);
 
 

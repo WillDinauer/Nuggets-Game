@@ -24,13 +24,14 @@ static void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
 static void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
 static char *initVisStr(int width, int height);
 static void intersectVis(char *vis1, char *vis2);
-position_t *map_intToPos(map_t *map, int i);
 static void applyVis(map_t *map, char *vis);
 
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
 void placeGold(void *arg, const char *key, void *item);
 void isOnGoldITR(void *arg, const char *key, void *item);
+
+position_t *map_intToPos(map_t *map, int i);
 
 /**************** map_new ****************/
 map_t *map_new(FILE *fp)

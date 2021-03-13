@@ -131,7 +131,7 @@ void applyVis(map_t *map, char *vis)
 void replaceBlocked(map_t *map, map_t *outMap, player_t *player)
 {
 	char *visHere = initVisStr(map->width, map->height);
-	map_calculateVisibility(map,visHere, player->pos);
+	map_calculateVisibility(map, visHere, player->pos);
 
     if (visHere != NULL) {
         for (int i = 0; i < strlen(visHere); i++) {
@@ -244,8 +244,7 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
-	
-	free(map->mapStr); 
+  free(map->mapStr);
 	return newMapStr;
 }
 

@@ -1,55 +1,49 @@
 /*
-* map.c implementation of map module
+* map.c -- implementation of map module
 *
-* some sources used http://www.fundza.com/c4serious/fileIO_reading_all/index.html: 
+* See map.h for more details and ../IMPLEMENTATION.md for even more
+*
+* Nuggets: Bash Boys 
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include "map.h"
 #include "message.h"
 #include "hashtable.h"
+#include "file.h"
 
 /**************** Private Functions ****************/
-map_t *map_copy(map_t *map);
-void map_calculateVisibility(map_t *map, player_t *player);
-bool canPlayerMoveTo(map_t *map, position_t *pos);
+static map_t *map_copy(map_t *map);
+static bool isObstruct(char c);
+static bool canPlayerMoveTo(map_t *map, position_t *pos);
+static char *posToStr(position_t *pos);
+static void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
+static void myPrint(FILE *fp, const char *key, void *item);
+static void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
+static char *initVisStr(int width, int height);
+static void intersectVis(char *vis1, char *vis2);
+static position_t *map_intToPos(map_t *map, int i);
+static applyVis(map_t *map, char *vis);
+
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);
 void placeGold(void *arg, const char *key, void *item);
-position_t *map_intToPos(map_t *map, int i);
 void isOnGoldITR(void *arg, const char *key, void *item);
-void applyVis(map_t *map, char *vis);
 
 /**************** map_new ****************/
 map_t *map_new(FILE *fp)
 {
-
 	map_t *map = malloc(sizeof(map_t));
 	if (map == NULL){
 		return NULL;
 	}
 
-	char *buffer;
-	long numbytes;
-		
-	// Getting total num of bytes and moving ptr back to start of file
-	fseek(fp, 0L, SEEK_END);
-	numbytes = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);	
-	
-	// Allocating new mem for string
-	buffer = (char*)calloc(numbytes, sizeof(char));	
-	// Mem check
-	if(buffer == NULL){
-		return NULL;
-	}
-		
-	// Copy all chars into string
-	fread(buffer, sizeof(char), numbytes, fp);
-	
+    // read map *.txt file into buffer
+	char *buffer = freadfilep(fp);
 
 	int width = 0;
 	int height = 0; 
@@ -64,7 +58,7 @@ map_t *map_new(FILE *fp)
 				height += 1;
 				offset += 1;
 			} else {
-				// This shifts the line over if for every new line we have taken out
+				// this shifts the line over if for every new line we have taken out
 				buffer[i - offset] = buffer[i];
 				width += 1;
 			}
@@ -75,9 +69,9 @@ map_t *map_new(FILE *fp)
 	map->width = width / height;
 	map->height = height;
 
-	char *mapStr = (char*) malloc( (numbytes * sizeof(char)) + 5); 
+    // copy buffer into mapstring
+	char *mapStr = (char*) malloc( (strlen(buffer) * sizeof(char)) + 5); 
 	strcpy(mapStr, buffer);
-
 
 	map->mapStr = mapStr;
 	free(buffer);
@@ -93,7 +87,7 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 
 	// Adding all the gold to the map
 	if (goldData != NULL){
-        hashtable_iterate(goldData, outMap, placeGold);
+		hashtable_iterate(goldData, outMap, placeGold);
 	}
 
 	if (players != NULL){
@@ -101,31 +95,34 @@ map_t *map_buildPlayerMap(map_t *map, player_t *player, hashtable_t *goldData, h
 		hashtable_iterate(players, outMap, addPlayerITR);
 	}
 
-    // Replace this player's letter with '@'
-    if (player != NULL) {
-	    int plyIndx = map_calcPosition(outMap, player->pos);
-	    outMap->mapStr[plyIndx] = '@';
-        
-        //TODO: add function to replace out of vision gold and players w/ default '.' or '#'
+	// Replace this player's letter with '@'
+	if (player != NULL) {
+		int plyIndx = map_calcPosition(outMap, player->pos);
+		outMap->mapStr[plyIndx] = '@';
+		
+		replaceBlocked(map, outMap, player);
+		applyVis(outMap, player->visibility);
+	}
 
-        applyVis(outMap, player->visibility);
-    }
-
-    outMap->mapStr = map_buildOutput(outMap);
+	outMap->mapStr = map_buildOutput(outMap);
 
 	return outMap;
 }
 
-/**************** applyVis ****************/
+/********** helper: applyVis **********/
 void applyVis(map_t *map, char *vis)
 {
-    if (strlen(map->mapStr) != strlen(vis)) {   // defensive programming
+    if (strlen(map->mapStr) != strlen(vis)) {
+        // defensive programming
+        printf("mapStrLen:%ld , visLen:%ld\n", strlen(map->mapStr), strlen(vis));
+        printf("map width: %d, height: %d\n", map->width, map->height);
         return;
     }
 
     int finalPos = map->height * map->width;
     int i = 0;
 
+    // loop through the map, converting non-visble characters to empty spaces
     for (i = 0; i < finalPos; i++) {
         if (vis[i] == '0') {
             map->mapStr[i] = ' ';
@@ -133,27 +130,73 @@ void applyVis(map_t *map, char *vis)
     }
 }
 
-/**************** placeGold ****************/
-void placeGold(void *arg, const char *key, void *item)
+/********** helper: replaceBlocked **********/
+void replaceBlocked(map_t *map, map_t *outMap, player_t *player)
 {
-    map_t *outMap = arg;
-    gold_t *g = item;
-    if (!g->isCollected) {
-        int gIndx = map_calcPosition(outMap, g->pos);
-		outMap->mapStr[gIndx] = '*';
+	char *visHere = initVisStr(map->width, map->height);
+	map_calculateVisibility(map, visHere, player->pos);
+
+    if (visHere != NULL) {
+        for (int i = 0; i < strlen(visHere); i++) {
+			// for any gold or players that should not be currently visible,
+            //  convert them to their default symbol in the map
+            if (visHere[i] == '0' && (isalpha(outMap->mapStr[i]) || outMap->mapStr[i] == '*')) {
+                    outMap->mapStr[i] = map->mapStr[i]; 
+            }
+			// Or-ing the vis strings
+			if(player->visibility[i] == '1' || visHere[i] == '1'){
+				player->visibility[i] = '1';
+			}
+        }
+    }
+	free(visHere);
+}
+
+/********** helper: initVisStr **********/
+char *initVisStr(int width, int height)
+{	
+	char *vis = calloc((width * height) + 1, sizeof(char));
+	for (int i = 0; i < (width * height); i++) {
+		strcat(vis, "0");
+	}
+	return vis;
+}
+
+/********** helper: intersectVis **********/
+void intersectVis(char *vis1, char *vis2)
+{
+    for (int i = 0; i < strlen(vis1); i++) {
+        // Or-ing the vis strings
+        if(vis1[i] == '1' || vis2[i] == '1'){
+            vis1[i] = '1';
+        }
     }
 }
 
-/**************** addPlayerITR ****************/
+
+/**************** iterator: placeGold ****************/
+void placeGold(void *arg, const char *key, void *item)
+{
+	map_t *outMap = arg;
+	gold_t *g = item;
+	if (!g->isCollected) {
+		int gIndx = map_calcPosition(outMap, g->pos);
+		outMap->mapStr[gIndx] = '*';
+	}
+}
+
+
+/**************** iterator: addPlayerITR ****************/
 void addPlayerITR(void *arg, const char *key, void *item)
 {
 	map_t *map = arg;
 	player_t *player = item;
-    if (player->isActive) {
-	    int plyIndx = map_calcPosition(map, player->pos);
-	    map->mapStr[plyIndx] = player->letter;
-    }
+	if (player->isActive) {
+		int plyIndx = map_calcPosition(map, player->pos);
+		map->mapStr[plyIndx] = player->letter;
+	}
 }	
+
 
 /**************** map_calcPosition ****************/
 int map_calcPosition(map_t *map, position_t *pos)
@@ -162,32 +205,30 @@ int map_calcPosition(map_t *map, position_t *pos)
 	if (pos->x > map->width || pos->y > map->height || pos->x < -1 || pos->y < -1){
 		return -1;
 	}
-
 	return (pos->y * map->width) + (pos->x + 1);
 }
+
 
 /**************** map_intToPos ****************/
 position_t *map_intToPos(map_t *map, int i)
 {
-    position_t *pos = malloc(sizeof(position_t));
+	position_t *pos = malloc(sizeof(position_t));
 
-    i--;
+	i--;
 
-    int width = map->width;
+	int width = map->width;
 
-    pos->x = i%width;
-    pos->y = i/width;
+	pos->x = i%width;
+	pos->y = i/width;
 
-    return pos;
+	return pos;
 }
 
+
 /**************** buildMap ****************/
-/*
-* returned string must be freed by the caller
-*/
+/* returned string must be freed by the caller */
 char *map_buildOutput(map_t *map)
 {
-
 	if (map == NULL){
 		return NULL;
 	}
@@ -209,7 +250,7 @@ char *map_buildOutput(map_t *map)
 		}
 	}
     free(map->mapStr);
-	return newMapStr;
+    return newMapStr;
 }
 
 
@@ -224,7 +265,7 @@ map_t *map_copy(map_t *map)
 	newMap->height = map->height;
 
 	// allocating new mem and copying into newMap
-	char *newMapStr = (char*) malloc( (strlen(map->mapStr) * sizeof(char)) + 5); 
+	char *newMapStr = calloc((map->width * map->height) + 1, sizeof(char));
 	strcpy(newMapStr, map->mapStr);
 	newMap->mapStr = newMapStr;
 
@@ -233,29 +274,94 @@ map_t *map_copy(map_t *map)
 
 
 /**************** map_calculateVisibility ****************/
-void map_calculateVisibility(map_t *map, player_t *player)
+void map_calculateVisibility(map_t *map, char *vis, position_t *pos)
 {
-	char *vis = player->visibility;
-    int playX = player->pos->x;
-    int playY = player->pos->y;
-    int i, h;
 
-    if (strlen(vis) == 0) {
-        int finalPos = map->width * map->height;
-        for (i = 0; i < finalPos; i++) {
-           strcat(vis, "0");
-        }
-    }
+	position_t *newPos = malloc(sizeof(position_t));
 
-    //TODO: REPLACE WITH ACTUAL VISIBILITY MATH/LOGIC
-    for (i = playX - 2; i < playX + 3; i++) {
-        for (h = playY - 2; h < playY + 3; h++) {
-            if (i >= 0 && i <= map->width && h >= 0 && h <= map->height) {
-                int pos = h * map->width + i + 1;
-                vis[pos] = '1';
-            }
+	for (newPos->x = 0; newPos->x < map->width;  newPos->x++){
+		for (newPos->y = 0; newPos->y < map->height; newPos->y++){
+
+			// Calculating the visibility from player pos and updating visibility string
+			map_calcVisPath(map, vis, pos, newPos);
+		}
+	}
+
+	free(newPos);
+}
+
+
+/**************** map_calcVisPath ****************/
+void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2)
+{
+
+    int dx = abs(pos1->x - pos2->x);
+    int dy = abs(pos1->y - pos2->y);
+
+	position_t *newPos = malloc(sizeof(position_t));
+	newPos->x = pos1->x;
+	newPos->y = pos1->y;
+
+    int i = 1 + dx + dy;
+    int error = dx - dy;
+
+	int x_dir, y_dir;
+	
+    // Checking direction of movement in both directions
+	if (pos2->x > pos1->x){ x_dir = 1; } 
+	else { x_dir = -1; }
+
+	if (pos2->y > pos1->y){ y_dir = 1; } 
+	else { y_dir = -1; }
+
+	dx *= 2;
+    dy *= 2;
+	bool breakNext = false; 
+    while (i > 0)
+    {
+        // check for visibility along this line and special
+        //  cases (corners and passages)
+		int indx = map_calcPosition(map,newPos);
+		if (!breakNext){
+			vis[indx] = '1';
+		} 
+		else if (map->mapStr[indx] == '+'){
+			vis[indx] = '1';
+			break;
+		} else if (map->mapStr[indx] == '#' && map->mapStr[map_calcPosition(map,pos1)] == '#'){
+			vis[indx] = '1';
+			break;
+		}
+		else {
+			break;
+		}
+		
+		if(isObstruct(map->mapStr[indx])){
+			breakNext = true;
+		} 
+		
+        if (error > 0){
+            newPos->x += x_dir;
+            error -= dy;
         }
+        else{
+            newPos->y += y_dir;
+            error += dx;
+        }
+
+		i -= 1;
     }
+	free(newPos);
+}
+
+
+/**************** isObstruct ****************/
+bool isObstruct(char c)
+{
+	if (c == '+' || c == '-' || c == '|' || c == '#' || c == ' '){
+		return true;
+	}
+	return false;
 }
 
 
@@ -309,10 +415,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-            
-            // Update visibility
-            map_calculateVisibility(map, player);
 
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
 		}
 	} 
 
@@ -333,9 +440,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-            
-            // Update visibility
-            map_calculateVisibility(map, player);
+
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
 
 		}
 	} 
@@ -357,9 +466,12 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-            
-            // Update visibility
-            map_calculateVisibility(map, player);
+
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
+
 		}
 	}
 
@@ -369,16 +481,16 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 	if(player->pos->x >= map->width - 1){ player->pos->x = map->width - 2; }
 	if(player->pos->y >= map->height){ player->pos->y = map->height - 1; }
 
-    // set nextPos x and y to check if the player moved
-    nextPos->x = player->pos->x;
-    nextPos->y = player->pos->y;
+	// set nextPos x and y to check if the player moved
+	nextPos->x = player->pos->x;
+	nextPos->y = player->pos->y;
 
 	free(newPos);
 	return;
 }
 
 
-/**************** canPlayerCanMoveTo ****************/
+/**************** canPlayerMoveTo ****************/
 bool canPlayerMoveTo(map_t *map, position_t *pos)
 {	
 	// Calculating the index in the string from the pos
@@ -393,6 +505,8 @@ bool canPlayerMoveTo(map_t *map, position_t *pos)
 	return false;
 }
 
+
+/********** iterator: isOnGoldITR **********/
 void isOnGoldITR(void *arg, const char *key, void *item)
 {
 	// sendGoldMessage now happens after in server file after player move is complete
@@ -411,10 +525,10 @@ void isOnGoldITR(void *arg, const char *key, void *item)
 void map_delete(map_t *map)
 {	
 	// Deletes map str and map if not null
-    if (map != NULL) {
-        if (map->mapStr != NULL) {
-            free(map->mapStr);
-        }
-        free(map);
-    }
+	if (map != NULL) {
+		if (map->mapStr != NULL) {
+			free(map->mapStr);
+		}
+		free(map);
+	}
 }

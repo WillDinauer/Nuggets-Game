@@ -1,14 +1,21 @@
 /* 
- * map.h - header file map module in nuggets project
+ * map.h -- header file for map module
  *
- * A map is a single line string representation that is created from a map file.
+ * A map is a single-line string representing
+ *  a playable game map that is created from a map file.
+ *
+ * Nuggets: Bash Boys
  */
+
 
 #ifndef __MAP_H
 #define __MAP_H
 
+
 #include "hashtable.h"
 #include "message.h"
+
+
 /******************************** DATA STRUCTS ********************************/
 
 /**************** position ****************/
@@ -18,12 +25,12 @@ typedef struct position {
 
 /**************** player ****************/
 typedef struct player {
-    addr_t addr;
+    addr_t addr;        // client address
     position_t *pos;
     int gold;
-    char letter;
-    bool isActive;
-    char *visibility;
+    char letter;        // public identifier
+    bool isActive;      // current in-game status
+    char *visibility;   // current field of vision
 } player_t;
 
 /**************** gold ****************/
@@ -33,16 +40,14 @@ typedef struct gold {
 	position_t *pos;
 } gold_t;
 
-
 /**************** map ****************/
 typedef struct map {
-	char *mapStr;
+	char *mapStr;       // string representation of file input
 	int width, height;
 } map_t;
 
 
 /******************************** FUNCTIONS ********************************/
-
 
 /**************** map_new ****************/
 /*
@@ -85,7 +90,11 @@ char *map_buildOutput(map_t *map);
 
 
 /***************** map_calculateVisibility *************/
-void map_calculateVisibility(map_t *map, player_t *player);
+/*
+*   Loops through positions in map and passes each
+*    to map_calcVisPath to determine visibility from the passed position
+*/
+void map_calculateVisibility(map_t *map, char *vis, position_t *pos);
 
 
 /**************** map_movePlayer ****************/
@@ -98,14 +107,21 @@ void map_calculateVisibility(map_t *map, player_t *player);
 */
 void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable_t *goldData);
 
+
 /**************** map_intToPos ****************/
+/*
+*   Takes a mapstring index integer and converts
+*    it to a position struct based on the passed map,
+*    returning that position
+*/
 position_t *map_intToPos(map_t *map, int i);
+
 
 /**************** map_delete ****************/
 /*
-*	Frees the map struct and the string inside it
-* 
+*	Frees the map struct and the string inside it 
 */
 void map_delete(map_t *map);
+
 
 #endif // __MAPmake_H

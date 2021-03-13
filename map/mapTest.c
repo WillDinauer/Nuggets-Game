@@ -1,3 +1,9 @@
+/* mapTest.c -- unit testing for map loading
+ *  and player movement
+ * 
+ * Nuggets: Bash Boys
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -5,24 +11,22 @@
 #include "map.h"
 #include "hashtable.h"
 
-player_t *makePlayer();
+/********** prototypes **********/
+player_t *makePlayer(map_t *map);
 void randPos(position_t *pos);
 bool checkValidMove(map_t *map, player_t *p);
 
+/********** main **********/
 int main(const int argc, const char *argv[])
 {
-
-	FILE *fp = fopen("../maps/main.txt", "r");
+	FILE *fp = fopen("../maps/small.txt", "r");
 
 	map_t *map = map_new(fp);
 	printf("map width: %d, height: %d\n\n", map->width, map->height);
-
-
-	player_t *p = makePlayer();
-	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 7;
-	pos->y = 4;
+	
+	player_t *p = makePlayer(map);
 	map_t *plyrMap;
+	position_t *pos = malloc(sizeof(position_t));
 
 	// Testing player movement 
 	for (int i = 0; i < 20; i++){
@@ -43,22 +47,52 @@ int main(const int argc, const char *argv[])
 		map_delete(map);
 		printf("map_delete() was successful\n");
 	}
-	
+	if (plyrMap != NULL){
+		map_delete(plyrMap);
+		printf("map_delete() was successful\n");
+	}
+
+	if (p != NULL) {
+        if (p->pos != NULL) {
+            free(p->pos);
+        }
+        if (p->visibility != NULL) {
+            free(p->visibility);
+        }
+        free(p);
+    }
+
+	free(pos);
 }
 
-
-player_t *makePlayer()
+/********** makePlayer **********/
+/* create new player to go in map */
+player_t *makePlayer(map_t *map)
 {
-	position_t *pos = malloc(sizeof(position_t));
-	pos->x = 6;
-	pos->y = 2;
+	player_t *player = malloc(sizeof(player_t));
+	if (player == NULL) { // out of memory
+		return NULL;
+	} 
+	// initialize player info
+	player->isActive = true;
+	player->gold = 0;
+	player->visibility = calloc(map->width * map->height + 1, sizeof(char));
 
-	player_t *p = malloc(sizeof(player_t));
-	p->pos = pos;
+	player->pos = malloc(sizeof(position_t));
+	player->pos->x = 7;
+	player->pos->y = 3;
 
-	return p;
+	for (int i = 0; i < map->width * map->height; i++) {
+		strcat(player->visibility, "0");
+	}
+
+	return player;
 }
 
+/********** randPos **********/
+/* create random position to which
+ *  player can move
+ */
 void randPos(position_t *pos)
 {
 
@@ -80,7 +114,10 @@ void randPos(position_t *pos)
 	printf("(%d,%d)", pos->x, pos->y);
 }
 
-
+/********** checkValidMove **********/
+/* see whether a move keeps the player
+ *  in bounds or not
+ */
 bool checkValidMove(map_t *map, player_t *p)
 {
 	char c = map->mapStr[(p->pos->y * map->width) + (p->pos->x + 1)];

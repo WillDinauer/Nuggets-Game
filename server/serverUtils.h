@@ -1,8 +1,14 @@
 /* 
  * serverUtils.h - header file for serverUtils module
  *
+ * Group 7 - Bash Boys
  *
+ * Dartmouth CS50, Winter 2021
  */
+
+#ifndef __SERVERUTILS_H
+#define __SERVERUTILS_H
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,6 +22,7 @@
 #include "set.h"
 #include "counters.h"
 
+/********* Data Structures **********/
 typedef struct serverInfo {
     int *numPlayers;
     int *goldCt;
@@ -27,5 +34,12 @@ typedef struct serverInfo {
     addr_t specAddr;
 } serverInfo_t;
 
+/*********** Functions ************/
 
+/************** validateAction *******************/
+/* validates the action of a player, returning true if that player
+ * has moved as a result of their key press
+ */
 bool validateAction(char *keyPress, player_t *player, serverInfo_t *info);
+
+#endif // __SERVERUTILS_H

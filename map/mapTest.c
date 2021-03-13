@@ -1,3 +1,9 @@
+/* mapTest.c -- unit testing for map loading
+ *  and player movement
+ * 
+ * Nuggets: Bash Boys
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -5,18 +11,18 @@
 #include "map.h"
 #include "hashtable.h"
 
+/********** prototypes **********/
 player_t *makePlayer(map_t *map);
 void randPos(position_t *pos);
 bool checkValidMove(map_t *map, player_t *p);
 
+/********** main **********/
 int main(const int argc, const char *argv[])
 {
-
 	FILE *fp = fopen("../maps/small.txt", "r");
 
 	map_t *map = map_new(fp);
 	printf("map width: %d, height: %d\n\n", map->width, map->height);
-
 	
 	player_t *p = makePlayer(map);
 	map_t *plyrMap;
@@ -59,7 +65,8 @@ int main(const int argc, const char *argv[])
 	free(pos);
 }
 
-
+/********** makePlayer **********/
+/* create new player to go in map */
 player_t *makePlayer(map_t *map)
 {
 	player_t *player = malloc(sizeof(player_t));
@@ -75,7 +82,6 @@ player_t *makePlayer(map_t *map)
 	player->pos->x = 7;
 	player->pos->y = 3;
 
-
 	for (int i = 0; i < map->width * map->height; i++) {
 		strcat(player->visibility, "0");
 	}
@@ -83,6 +89,10 @@ player_t *makePlayer(map_t *map)
 	return player;
 }
 
+/********** randPos **********/
+/* create random position to which
+ *  player can move
+ */
 void randPos(position_t *pos)
 {
 
@@ -104,7 +114,10 @@ void randPos(position_t *pos)
 	printf("(%d,%d)", pos->x, pos->y);
 }
 
-
+/********** checkValidMove **********/
+/* see whether a move keeps the player
+ *  in bounds or not
+ */
 bool checkValidMove(map_t *map, player_t *p)
 {
 	char c = map->mapStr[(p->pos->y * map->width) + (p->pos->x + 1)];

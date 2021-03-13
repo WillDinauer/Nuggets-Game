@@ -20,14 +20,12 @@
 static map_t *map_copy(map_t *map);
 static bool isObstruct(char c);
 static bool canPlayerMoveTo(map_t *map, position_t *pos);
-static char *posToStr(position_t *pos);
 static void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
-static void myPrint(FILE *fp, const char *key, void *item);
 static void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
 static char *initVisStr(int width, int height);
 static void intersectVis(char *vis1, char *vis2);
-static position_t *map_intToPos(map_t *map, int i);
-static applyVis(map_t *map, char *vis);
+position_t *map_intToPos(map_t *map, int i);
+static void applyVis(map_t *map, char *vis);
 
 /**************** Iterator Functions ****************/
 void addPlayerITR(void *arg, const char *key, void *item);

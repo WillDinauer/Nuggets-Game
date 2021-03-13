@@ -207,6 +207,11 @@ see description below
 3. returns newMap
 
 `map_calculateVisibility()`:
+1. create a `position` struct and FOR every border position...
+2. call `map_calcVisPath` to alter the visibility string for the line from the player to the border `position` struct
+3. free the `position` struct
+
+`map_calcVisPath()`:
 
 see description below
 
@@ -362,6 +367,7 @@ position_t *map_intToPos(map_t *map, int i)
 char *map_buildOutput(map_t *map)
 map_t *map_copy(map_t *map)
 char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
+void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2)
 void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
 bool canPlayerCanMoveTo(map_t *map, position_t *pos)
 void map_delete(map_t *map)
@@ -383,7 +389,9 @@ void map_delete(map_t *map)
 
 `map_copy()` yields an exact replica of the passed map, ready for alterations, with newly-allocated memory
 
-`map_calculateVisibility()` loops through every possible graph point on the passed map to decide whether the passed player should be able to see it given walls and corners
+`map_calculateVisibility()` loops through the border of the map to decide what points the player should be able to see from their current location
+
+`map_calcVisPath()` creates lines to the border of the map and changes the player's visibility string according to what should be seen
 
 `map_movePlayer()` updates player position in response to client input (nextPos) if valid
 

@@ -253,7 +253,22 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 		if (*numPlayers == maxPlayers) {
 			message_send(from, "QUIT Game is full: no more players can join");
 		} else {
-			//TODO: Add check for blank player name
+			// check for blank player name
+            bool allSpaces = true;
+            for (int i = 0; i < strlen(words[1]); i++) {
+                if (isspace(words[1][i]) == 0) {
+                    allSpaces = false;
+                }
+            }
+            if (allSpaces) {
+                message_send(from, "QUIT name cannot be only spaces!");
+            }
+            
+            // truncate names that are too long
+            if (strlen(words[1]) > 50) {
+                words[1][50] = '\0';
+                log_v("name truncated");
+            }
 
             log_v("adding a player to the game...");
             // create a new player

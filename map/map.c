@@ -12,6 +12,7 @@
 #include "map.h"
 #include "message.h"
 #include "hashtable.h"
+#include "file.h"
 
 /**************** Private Functions ****************/
 map_t *map_copy(map_t *map);
@@ -22,6 +23,7 @@ void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
 void myPrint(FILE *fp, const char *key, void *item);
 void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
 char *initVisStr(int width, int height);
+void intersectVis(char *vis1, char *vis2);
 
 
 /**************** Iterator Functions ****************/
@@ -40,24 +42,8 @@ map_t *map_new(FILE *fp)
 		return NULL;
 	}
 
-	char *buffer;
-	long numbytes;
+	char *buffer = freadfilep(fp);
 		
-	// Getting total num of bytes and moving ptr back to start of file
-	fseek(fp, 0L, SEEK_END);
-	numbytes = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);	
-	
-	// Allocating new mem for string
-	buffer = (char*)calloc(numbytes, sizeof(char));	
-	// Mem check
-	if(buffer == NULL){
-		return NULL;
-	}
-		
-	// Copy all chars into string
-	fread(buffer, sizeof(char), numbytes, fp);
-	
 
 	int width = 0;
 	int height = 0; 
@@ -83,7 +69,7 @@ map_t *map_new(FILE *fp)
 	map->width = width / height;
 	map->height = height;
 
-	char *mapStr = (char*) malloc( (numbytes * sizeof(char)) + 5); 
+	char *mapStr = (char*) malloc( (strlen(buffer) * sizeof(char)) + 5); 
 	strcpy(mapStr, buffer);
 
 
@@ -172,6 +158,16 @@ char *initVisStr(int width, int height)
 	return vis;
 }
 
+void intersectVis(char *vis1, char *vis2)
+{
+    for (int i = 0; i < strlen(vis1); i++) {
+        // Or-ing the vis strings
+        if(vis1[i] == '1' || vis2[i] == '1'){
+            vis1[i] = '1';
+        }
+    }
+}
+
 
 /**************** placeGold ****************/
 void placeGold(void *arg, const char *key, void *item)
@@ -248,8 +244,7 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
-    free(map->mapStr);
-
+  free(map->mapStr);
 	return newMapStr;
 }
 
@@ -265,7 +260,7 @@ map_t *map_copy(map_t *map)
 	newMap->height = map->height;
 
 	// allocating new mem and copying into newMap
-	char *newMapStr = calloc(strlen(map->mapStr) + 1, sizeof(char)); 
+	char *newMapStr = calloc((map->width * map->height) + 1, sizeof(char));
 	strcpy(newMapStr, map->mapStr);
 	newMap->mapStr = newMapStr;
 
@@ -410,7 +405,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-			
+
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
 		}
 	} 
 
@@ -432,6 +431,11 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
 
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
+
 		}
 	} 
 
@@ -452,7 +456,12 @@ void map_movePlayer(map_t *map, player_t *player, position_t *nextPos, hashtable
 			player->pos->x = newPos->x;
 			player->pos->y = newPos->y;
 			hashtable_iterate(goldData, player, isOnGoldITR);
-			
+
+			char *visHere = initVisStr(map->width, map->height);
+            map_calculateVisibility(map,visHere, player->pos);
+            intersectVis(player->visibility, visHere);
+            free(visHere);
+
 		}
 	}
 

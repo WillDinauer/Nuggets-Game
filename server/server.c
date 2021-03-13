@@ -19,7 +19,7 @@
 #include "counters.h"
 #include "serverUtils.h"
 
-
+/********* Data Structures **********/
 typedef struct countersMap {
     counters_t *ctrs;
     map_t *map;
@@ -90,7 +90,9 @@ void keyCount(void *arg, int key, int count);
 void playerDelete(void *item);
 void goldDelete(void *item);
 
-
+/************** main *****************/
+/* validates parameters and makes the call to the server
+ */
 int main(int argc, char *argv[])
 {
     int seed = -1;
@@ -101,6 +103,10 @@ int main(int argc, char *argv[])
 	return server(argv, seed);
 }
 
+/************** server *****************/
+/* initializes all necessary data structures
+ * and starts listening for messages from clients
+ */
 int server(char *argv[], int seed)
 {
     // initialize variables to be stored as the server information
@@ -157,6 +163,9 @@ int server(char *argv[], int seed)
     return 0;
 }
 
+/************** handleInput *****************/
+/* allows for a manual closing of the server
+ */
 static bool handleInput(void *arg)
 {
     char *line;
@@ -166,6 +175,10 @@ static bool handleInput(void *arg)
     return false;
 }
 
+/************** generateGold *****************/
+/* generates random positions and values for the gold in the game
+ * Returns a hashtable containing the generated gold structs
+ */
 hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos)
 {
     static const int GoldTotal = 250;      // amount of gold in the game
@@ -226,6 +239,11 @@ hashtable_t *generateGold(map_t *map, int seed, int *goldCt, counters_t *dotsPos
     return goldInfo;    // return the hashtable with the newly generated gold data
 }
 
+/************** handleMessage *****************/
+/* function to listen for messages from users
+ * handles adding/deleting players/spectators
+ * manages player moves
+ */
 static bool handleMessage(void *arg, const addr_t from, const char *message)
 {
 	serverInfo_t *info = (serverInfo_t *)arg;
@@ -412,10 +430,15 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 	return false;
 }
 
+/************** sendInitialInfo *****************/
+/* sends the initial information necessary for gameplay
+ * to either a new player or a new spectator
+ */
 void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
 {
     if (letter != 's') {    // indicates whether the client is a spectator or a player
     // send the "OK L" message to the player
+        log_v("sending OK message");
         char *letterMessage = malloc(5);
         if (letterMessage != NULL) {
             strcpy(letterMessage, "OK ");
@@ -456,6 +479,7 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
     snprintf(NCstr, NClen + 1, "%d", NC);
 
     // send the "GRID NR NC" message to the client
+    log_v("sending grid message");
     char *message = malloc(NRlen + NClen + 7);
     if (message != NULL) {
         // build the message
@@ -474,9 +498,14 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
     free(NCstr);
     
     // send the initial gold message
+    log_v("sending gold message");
     sendGoldMessage(from, 0, 0, *info->goldCt);
 }
 
+/************** sendGoldMessage *****************/
+/* constructs and sends the message informing the player
+ * or spectator of gold collected and gold remaining in the game
+ */
 void sendGoldMessage(addr_t address, int collected, int purse, int remain)
 {
     // length of the integers if they were strings
@@ -529,6 +558,10 @@ void sendGoldMessage(addr_t address, int collected, int purse, int remain)
     free(pstr);
 }
 
+/************** sendMaps *****************/
+/* calls the functions for sending maps
+ * to players and the potential spectator
+ */
 void sendMaps(serverInfo_t *info)
 {
 	hashtable_t *playerInfo = info->playerInfo;
@@ -542,6 +575,9 @@ void sendMaps(serverInfo_t *info)
 	}
 }
 
+/************** sendQuit *****************/
+/* sends the game over screen to all clients
+ */
 void sendQuit(serverInfo_t *info)
 {   
     // allocing result string and copying in the first line
@@ -559,6 +595,8 @@ void sendQuit(serverInfo_t *info)
 }
 
 /*********** buildGameOverString ***********/
+/* builds the game over string to be sent to all clients
+ */
 void buildGameOverString(void *arg, const char *key, void *item)
 {
     char *result = arg;
@@ -573,7 +611,9 @@ void buildGameOverString(void *arg, const char *key, void *item)
     free(plyRes);
 }
 
-
+/************** quitFunc *****************/
+/* iterator function to send all players the game over screen
+ */
 void quitFunc(void *arg, const char *key, void *item)
 {
     // Sending a player a quit message
@@ -582,6 +622,9 @@ void quitFunc(void *arg, const char *key, void *item)
     message_send(player->addr, result);
 }
 
+/************** sendSpectatorView *****************/
+/* sends the spectator the fully visible map
+ */
 void sendSpectatorView(serverInfo_t *info)
 {
 	addr_t specAddr = info->specAddr;
@@ -608,6 +651,10 @@ void sendSpectatorView(serverInfo_t *info)
 	map_delete(specMap);
 }
 
+/************** mapSend *****************/
+/* iterator function called for each player
+ * to construct and send them their individualized map
+ */
 void mapSend(void *arg, const char* key, void *item)
 {
     serverInfo_t *info = (serverInfo_t *)arg;
@@ -638,7 +685,10 @@ void mapSend(void *arg, const char* key, void *item)
     map_delete(playerMap);
 }
 
-
+/************** splitline *****************/
+/* splits input from clients into an array of words
+ * to allow HandleMessage to call the appropriate functions
+ */
 void splitline(char *message, char *words[])
 {
     // the first pointer points to the first character in the message
@@ -655,6 +705,10 @@ void splitline(char *message, char *words[])
 	}
 }
 
+/************** player_new *****************/
+/* creates a new player struct with randomized
+ * position in the map
+ */
 player_t *player_new(addr_t from, char letter, serverInfo_t *info)
 {
     player_t *player = malloc(sizeof(player_t));
@@ -680,6 +734,9 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
     return player;
 }
 
+/************** getRandomPos *****************/
+/* Returns a random, unoccupied position in the map
+ */ 
 position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo, hashtable_t *playerInfo)
 {
     counters_t *filledPos = counters_new();     // counters to store locations of occupied '.' spaces in the map
@@ -736,6 +793,10 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
     }
 }
 
+/************** findPos *****************/
+/* iterator function to store the key of the randomized
+ * counter in a counters module
+ */
 void findPos(void *arg, int key, int count)
 {
     twoints_t *t = arg;
@@ -756,6 +817,10 @@ void findPos(void *arg, int key, int count)
     }
 }
 
+/************** goldFill *****************/
+/* adds all gold positions to the counters
+ * keeping track of all occupied positions in the map
+ */
 void goldFill(void *arg, const char *key, void *item)
 {
     ctrsmap_t *bundle = arg;
@@ -771,6 +836,10 @@ void goldFill(void *arg, const char *key, void *item)
     counters_add(filled, val);
 }
 
+/************** playerFill *****************/
+/* adds player positions as occupied positions
+ * to the occupied positions counters
+ */
 void playerFill(void *arg, const char *key, void *item)
 {
     ctrsmap_t *bundle = arg;
@@ -790,6 +859,10 @@ void playerFill(void *arg, const char *key, void *item)
     }
 }
 
+/************** searchActivePlayers *****************/
+/* function to check if there are any active players still
+ * in the game
+ */
 void searchActivePlayers(void *arg, const char *key, void *item)
 {
     player_t *player = item;
@@ -801,6 +874,10 @@ void searchActivePlayers(void *arg, const char *key, void *item)
     }
 }
 
+/************** onlyDots *****************/
+/* builds a counters which holds all unoccupied '.'
+ * positions in the map
+ */
 void onlyDots(void *arg, int key, int count)
 {
     twoctrs_t *ctrs = arg;
@@ -814,6 +891,9 @@ void onlyDots(void *arg, int key, int count)
     }
 }
 
+/************** playerDelete *****************/
+/* function to delete a player struct
+ */
 void playerDelete(void *item)
 {
     player_t *player = item;
@@ -828,6 +908,9 @@ void playerDelete(void *item)
     }
 }
 
+/************** goldDelete *****************/
+/* function to delete a gold struct
+ */
 void goldDelete(void *item)
 {
     gold_t *gold = item;
@@ -839,8 +922,8 @@ void goldDelete(void *item)
     }
 }
 
-/*
- * simple function to count the number of keys in a `counters` module
+/************** keyCount *****************/
+/* simple function to count the number of keys in a `counters` module
  */
 void keyCount(void *arg, int key, int count)
 {
@@ -850,6 +933,10 @@ void keyCount(void *arg, int key, int count)
     }
 }
 
+/************** checkPlayerCollision *****************/
+/* checks if two players have collided, and swaps their
+ * locations appropriately if so
+ */
 void checkPlayerCollision(void *arg, const char *key, void *item)
 {
     pb_t *pb = arg;
@@ -875,8 +962,8 @@ void checkPlayerCollision(void *arg, const char *key, void *item)
     }
 }
 
-/*
- * An iterator to recount the gold that is left, called after a player moves
+/************** recountGold *****************/
+/* An iterator to recount the gold that is left, called after a player moves
  * *info->goldCt must be set to 0 before the iterator is called
  */
 void recountGold(void *arg, const char *key, void *item)
@@ -890,6 +977,10 @@ void recountGold(void *arg, const char *key, void *item)
     }
 }
 
+/************** sendOthersGold *****************/
+/* sends updated gold counters to all players in the game
+ * after a player has collected gold
+ */
 void sendOthersGold(void *arg, const char *key, void *item)
 {
     gb_t *goldBundle = arg;
@@ -903,6 +994,9 @@ void sendOthersGold(void *arg, const char *key, void *item)
     }
 }
 
+/************** gold_new *****************/
+/* allocates a new gold struct
+ */
 gold_t *gold_new()
 {
     gold_t *gold = malloc(sizeof(gold_t));
@@ -917,6 +1011,10 @@ gold_t *gold_new()
     return gold;
 }
 
+/************** getDotsPos *****************/
+/* builds the counters to hold the position
+ * of all '.' spaces in the map
+ */
 counters_t *getDotsPos(char *map)
 {
 	counters_t *dotsPos = counters_new();   // counters to return
@@ -936,6 +1034,10 @@ counters_t *getDotsPos(char *map)
 	return dotsPos;
 }
 
+/************** validateParameters *****************/
+/* checks and validates command-line arguments
+ * Returns True if all parameters are valid
+ */
 bool validateParameters(int argc, char *argv[], int *seed)
 {
 	// validate number of arguments
@@ -962,6 +1064,9 @@ bool validateParameters(int argc, char *argv[], int *seed)
 	return true;
 }
 
+/************** checkFile *****************/
+/* function to check if the map file is readable
+ */
 bool checkFile(char *fname, char *openParam)
 {
 	FILE *fp;
@@ -982,6 +1087,9 @@ bool checkFile(char *fname, char *openParam)
 	return false;
 }
 
+/************** findPlayerITR *****************/
+/* iterator function to find a specific player
+ */
 void findPlayerITR(void *arg, const char *key, void *item)
 {
 	struct findPlayer *fp = arg;

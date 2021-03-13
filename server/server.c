@@ -255,17 +255,21 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 		} else {
 			//TODO: Add check for blank player name
 
+            log_v("adding a player to the game...");
             // create a new player
 			char letter = 'A' + *numPlayers;                // set the letter based on the number of players, starting at 'A'
 			player_t *newPlayer = player_new(from, letter, info);
             if (newPlayer == NULL || newPlayer->pos == NULL) {
+                log_d("too many players (%d already created)", *numPlayers);
                 message_send(from, "QUIT no available spaces in the game, sorry!");
             } else {
                 if (hashtable_insert(playerInfo, words[1], newPlayer)) { // check for duplicate player name
                     (*numPlayers)++;
                     // send the necessary initial info to the new player
+                    log_c("sending info to new player: %c", letter);
 				    sendInitialInfo(from, info, letter);
                     // send the map with the added new player to all clients
+                    log_v("sending displays to all users");
 				    sendMaps(info);
 			    }
             }
@@ -292,6 +296,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
         if (words[1][0] == 'Q') {
             if (message_eqAddr(from, info->specAddr)) { // quit message is from the spectator
                 // set the specAddr to be noAddr
+                log_v("removing spectator...");
                 info->specAddr = message_noAddr();
                 // send a quit message to the spectator
                 message_send(from, "QUIT Thanks for watching!");
@@ -308,6 +313,7 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                     return true;
                 } else {
                     // send the updated maps to all clients
+                    log_v("sending displays to all users...");
                     sendMaps(info);
                 }
             }
@@ -337,6 +343,11 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
                 if (justReceived > 0) {
                   gb_t goldBundle = {fromPlayer, info->goldCt};
 
+                  // log the gold collection
+                  log_d("gold collected: %d", justReceived);
+                  log_d("gold now in purse: %d", fromPlayer->gold);
+                  log_d("gold left in the game: %d", *info->goldCt);
+                  log_v("sending gold messages...");
                   // send the gold message to the player
                   sendGoldMessage(from, justReceived, fromPlayer->gold, *info->goldCt);
                   // send updated gold messages to other existing players...
@@ -349,12 +360,14 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 
                 // if the gold remaining in the game has reached 0, send the game over screen to all clients
                 if(*info->goldCt == 0) {
+                    log_v("sending game over screen to all users");
                     sendQuit(info);
                     free(line);
                     free(prePos);
                     return true;
                 } else {
                     // otherwise, send the updated maps as usual
+                    log_v("sending displays to all users");
                     sendMaps(info);
                 }
             }
@@ -369,9 +382,12 @@ static bool handleMessage(void *arg, const addr_t from, const char *message)
 			message_send(specAddr, "QUIT You have been replaced by a new spectator.");
 		}
 
+        log_v("replacing spectator...");
         // update the spectator information
 		info->specAddr = from;
         // send the new spectator the initial info they need
+        
+        log_v("sending spectator info and display...");
 		sendInitialInfo(from, info, 's');
         // send the spectator the map
 		sendSpectatorView(info);
@@ -396,6 +412,8 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
             // send the message
             message_send(from, letterMessage);
             free(letterMessage);
+        } else {
+            log_e("out of memory");
         }
     }
 
@@ -409,10 +427,12 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
     // create a string for each integer
     char *NRstr = malloc(NRlen + 1);
     if (NRstr == NULL) { // out of memory
+        log_e("out of memory");
         return;
     }
     char *NCstr = malloc(NClen + 1);
     if (NCstr == NULL) { // out of memory
+        log_e("out of memory");
         free(NRstr);
         return;
     }
@@ -432,6 +452,8 @@ void sendInitialInfo(const addr_t from, serverInfo_t *info, char letter)
         // send the message
         message_send(from, message);
         free(message);
+    } else {
+        log_e("out of memory");
     }
     free(NRstr);
     free(NCstr);
@@ -449,15 +471,18 @@ void sendGoldMessage(addr_t address, int collected, int purse, int remain)
     // allocate memory for the string form of the integers
     char *cstr = malloc(clen + 1);
     if (cstr == NULL) { // out of memory
+        log_e("out of memory");
         return;
     }
     char *pstr = malloc(plen + 1);
     if (pstr == NULL) { // out of memory
+        log_e("out of memory");
         free(cstr);
         return;
     }
     char *rstr = malloc(rlen + 1);
     if (rstr == NULL) { // out of memory
+        log_e("out of memory");
         free(cstr);
         free(pstr);
         return;
@@ -481,6 +506,8 @@ void sendGoldMessage(addr_t address, int collected, int purse, int remain)
         // send the message
         message_send(address, message);
         free(message);
+    } else {
+        log_e("out of memory");
     }
     free(cstr);
     free(rstr);
@@ -617,6 +644,7 @@ player_t *player_new(addr_t from, char letter, serverInfo_t *info)
 {
     player_t *player = malloc(sizeof(player_t));
     if (player == NULL) { // out of memory
+        log_e("out of memory");
         return NULL;
     } 
     // initialize player info
@@ -641,7 +669,8 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
 {
     counters_t *filledPos = counters_new();     // counters to store locations of occupied '.' spaces in the map
     if (filledPos == NULL) { // out of memory
-        return NULL;
+         log_e("out of memory");
+         return NULL;
     }
 
     // bundle to be based to the hashtable_iterate functions, adding occupied spaces to filledPos
@@ -656,6 +685,7 @@ position_t *getRandomPos(map_t *map, counters_t *dotsPos, hashtable_t *goldInfo,
 
     counters_t *validPositions = counters_new();    // counters to store unoccupied '.' positions
     if (validPositions == NULL) { // out of memory
+        log_e("out of memory");
         counters_delete(filledPos);
         return NULL;
     }
@@ -839,6 +869,7 @@ void recountGold(void *arg, const char *key, void *item)
     serverInfo_t *info = arg;
     gold_t *goldItem = item;
 
+    // for any uncollected gold, add its value to the total gold left in the game
     if (!goldItem->isCollected){
        *info->goldCt += goldItem->value;
     }
@@ -875,6 +906,7 @@ counters_t *getDotsPos(char *map)
 {
 	counters_t *dotsPos = counters_new();   // counters to return
     if (dotsPos == NULL) {  // out of memory
+        log_e("out of memory");
         return NULL;
     }
 	int pos;

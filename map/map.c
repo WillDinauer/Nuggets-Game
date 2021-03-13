@@ -145,7 +145,7 @@ void applyVis(map_t *map, char *vis)
 void replaceBlocked(map_t *map, map_t *outMap, player_t *player)
 {
 	char *visHere = initVisStr(map->width, map->height);
-	map_calculateVisibility(map,visHere, player->pos);
+	map_calculateVisibility(map, visHere, player->pos);
 
     if (visHere != NULL) {
         for (int i = 0; i < strlen(visHere); i++) {
@@ -248,6 +248,7 @@ char *map_buildOutput(map_t *map)
 			offset -= 1;
 		}
 	}
+    free(map->mapStr);
 
 	return newMapStr;
 }
@@ -264,7 +265,7 @@ map_t *map_copy(map_t *map)
 	newMap->height = map->height;
 
 	// allocating new mem and copying into newMap
-	char *newMapStr = (char*) malloc( (strlen(map->mapStr) * sizeof(char)) + 5); 
+	char *newMapStr = calloc(strlen(map->mapStr) + 1, sizeof(char)); 
 	strcpy(newMapStr, map->mapStr);
 	newMap->mapStr = newMapStr;
 

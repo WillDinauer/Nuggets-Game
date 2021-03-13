@@ -13,7 +13,7 @@ Once all gold has been collected, the server sends a QUIT message to all players
 1. Call `validateParameters` to validate the map file and the seed
 2. Call the server and return its return value
 
-‘server’
+`server`
 1. Initialize all information relevant to the server
 2. Load the map from the map file, writing it to a one-line string and storing the height and width of the map
 3. Create a `counters` module to store valid ‘.’ positions in the map
@@ -72,7 +72,6 @@ Once all gold has been collected, the server sends a QUIT message to all players
 1. Takes a keypress as an input checks if it is a valid key of movement
 2. Valid keys are “h,l,j,k,y,u,b,n” and the corresponding capital of each key move the player as far as possible in that direction
 3. Calls `map_movePlayer` to move the player in the specified direction
-
 
 `sendInitialInfo`
 1. Convert the integer values of the map’s height and width into strings
@@ -188,6 +187,22 @@ The file map.c contains all the code necessary for making, copying, and updating
 2. get player position plyIndx from map_calcPosition()/player->pos for every active player
 3. convert map->mapStr[plyIndx] to the players identity character
 
+`applyVis()`:
+
+see description below
+
+`replaceBlocked()`:
+
+see description below
+
+`initVisStr()`:
+
+see description below
+
+`intersectVis()`:
+
+see description below
+
 `map_calcPosition()`:
 
 see description below
@@ -212,8 +227,14 @@ see description below
 3. free the `position` struct
 
 `map_calcVisPath()`:
-
-see description below
+loop through all points in the map
+* a. calculate dx dy, calculating ray between current point and point of interest
+* b. get directions of x and y
+* c. define error as dx-dy
+* d. for every box between the two points:
+	* i. if box obstructs (`isObstruct`), set visibility string to 1 and break
+	* ii. if error is greater than zero, move the box horizontally
+	* iii. else move the box vertically
 
 `map_movePlayer()`:
 1. copies position struct from player struct
@@ -365,12 +386,19 @@ void addPlayerITR(void *arg, const char *key, void *item)
 int map_calcPosition(map_t *map, position_t *pos)
 position_t *map_intToPos(map_t *map, int i)
 char *map_buildOutput(map_t *map)
-map_t *map_copy(map_t *map)
+static map_t *map_copy(map_t *map)
 char *map_calculateVisibility(map_t *map, player_t *player, hashtable_t *goldData, hashtable_t *players)
 void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2)
 void map_movePlayer(map_t *map, player_t *player, position_t *nextPos)
-bool canPlayerCanMoveTo(map_t *map, position_t *pos)
+staticbool canPlayerCanMoveTo(map_t *map, position_t *pos)
 void map_delete(map_t *map)
+static bool isObstruct(char c);
+static void replaceBlocked(map_t *map, map_t *outMap, player_t *player);
+static void map_calcVisPath(map_t *map, char *vis, position_t *pos1, position_t *pos2);
+static char *initVisStr(int width, int height);
+static void intersectVis(char *vis1, char *vis2);
+static void applyVis(map_t *map, char *vis);
+void isOnGoldITR(void *arg, const char *key, void *item);
 ```
 
 `map_new()` loads map struct from passed text file and returns the map
@@ -398,6 +426,14 @@ void map_delete(map_t *map)
 `canPlayerMoveTo()` checks for allowed player movement (i.e. anywhere but rocks and walls)
 
 `map_delete()` frees map and map string to avoid memory shenanigans
+
+`applyVis()` loops through the map and turns non-visible corresponding characters to spaces in the visibility string
+
+`replaceBlocked()` replaces gold and players that are not currently visible with their basemap characters
+
+`initVisStr()` gets a binary visibility string of appropriate length ready and zeroed
+
+`intersectVis()` figures out whether the intersection of visibility string is visible
 
 
 ## Data Structures
@@ -428,7 +464,7 @@ The hashtable struct from lab 3 is vital to this operation, since the (key,item)
 
 ## Security & Privacy properties
 
-Buffers and extensive null-checking are our  best current efforts to stymie potential malicious use. There’s not much to do privacy-wise at this point because clients are only internal.
+Buffers and extensive null-checking are our best current efforts to stymie potential malicious use. There’s not much to do privacy-wise at this point because clients are only internal. `map.c`, though, does make use of static internal methods so that only what is necessary for use by the *server* via `map.h` is available outside `map.c`.
 
 
 ## Error Handling & Recovery
